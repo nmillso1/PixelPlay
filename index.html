@@ -1,0 +1,1491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PixelPlay</title>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    /* ============================================================
+       CSS VARIABLES — our named color palette + shared values
+    ============================================================ */
+    :root {
+      --pink:    #F2C4CE;
+      --blue:    #C4D4F2;
+      --mint:    #C4F2E3;
+      --cream:   #F2EAC4;
+      --indigo:  #2D2B55;
+      --indigo2: #4A4880;
+      --radius:  16px;
+      --shadow:  0 4px 24px rgba(45,43,85,0.10);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body { font-family: 'Nunito', sans-serif; color: var(--indigo); min-height: 100vh; overflow: hidden; }
+
+    /* ============================================================
+       ANIMATED GRADIENT BACKGROUND — the living, breathing signature
+    ============================================================ */
+    .bg {
+      position: fixed; inset: 0;
+      background: linear-gradient(135deg, var(--pink), var(--blue), var(--mint), var(--cream), var(--pink));
+      background-size: 400% 400%;
+      animation: gradientShift 18s ease infinite;
+      z-index: 0;
+    }
+    @keyframes gradientShift {
+      0%   { background-position: 0% 50%; }
+      50%  { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    .app { position: relative; z-index: 1; display: flex; flex-direction: column; height: 100vh; }
+
+    /* ============================================================
+       TOP NAV — frosted glass bar with logo + three tabs
+    ============================================================ */
+    .top-nav {
+      display: flex; align-items: center; gap: 24px; padding: 14px 28px;
+      background: rgba(255,255,255,0.35); backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255,255,255,0.5); flex-shrink: 0;
+    }
+    .logo { font-family: 'Press Start 2P', monospace; font-size: 12px; color: var(--indigo); letter-spacing: 1px; text-shadow: 0 0 20px rgba(45,43,85,0.2); }
+    .nav-tabs { display: flex; gap: 6px; margin-left: auto; }
+    .nav-tab { font-family: 'Nunito', sans-serif; font-size: 13px; font-weight: 700; padding: 7px 18px; border-radius: 999px; border: none; cursor: pointer; transition: all 0.2s; background: transparent; color: var(--indigo2); }
+    .nav-tab.active { background: var(--indigo); color: white; }
+    .nav-tab:hover:not(.active) { background: rgba(45,43,85,0.08); }
+
+    /* ============================================================
+       MAIN AREA — sidebar + content panel side by side
+    ============================================================ */
+    .main { display: flex; flex: 1; overflow: hidden; position: relative; }
+
+    /* ============================================================
+       LEFT SIDEBAR — recommendations (unchanged from Task 1)
+    ============================================================ */
+    .sidebar {
+      width: 260px; flex-shrink: 0;
+      background: rgba(255,255,255,0.30); backdrop-filter: blur(12px);
+      border-right: 1px solid rgba(255,255,255,0.5);
+      display: flex; flex-direction: column; padding: 20px 14px;
+      overflow-y: auto; gap: 16px;
+    }
+    .sidebar-title { font-family: 'Press Start 2P', monospace; font-size: 7px; color: var(--indigo); letter-spacing: 1px; padding: 0 6px; }
+    .rec-card { display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: var(--radius); background: rgba(255,255,255,0.45); border: 1px solid rgba(255,255,255,0.7); cursor: pointer; transition: transform 0.15s, box-shadow 0.15s; }
+    .rec-card:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+    .rec-thumb { width: 40px; height: 40px; border-radius: 8px; flex-shrink: 0; image-rendering: pixelated; }
+    .rec-info { flex: 1; min-width: 0; }
+    .rec-song { font-size: 12px; font-weight: 700; color: var(--indigo); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .rec-artist { font-size: 10px; color: var(--indigo2); margin-top: 2px; }
+    .sidebar-divider { height: 1px; background: rgba(45,43,85,0.12); margin: 2px 0; }
+
+    /* ============================================================
+       CENTER STAGE — now playing player
+    ============================================================ */
+    .center-stage { flex: 1; display: flex; align-items: center; justify-content: center; padding: 20px; }
+
+    /* ============================================================
+       PLAYER CARD
+    ============================================================ */
+    .player-card {
+      background: rgba(255,255,255,0.40); backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.75); border-radius: 28px;
+      box-shadow: var(--shadow); padding: 24px 32px;
+      width: 100%; max-width: 440px;
+      display: flex; flex-direction: column; align-items: center; gap: 16px;
+    }
+
+    /* Source toggle: Local File / YouTube */
+    .source-toggle { display: flex; gap: 6px; background: rgba(45,43,85,0.07); border-radius: 999px; padding: 4px; width: 100%; }
+    .source-btn { flex: 1; padding: 6px 10px; border-radius: 999px; border: none; cursor: pointer; font-family: 'Nunito', sans-serif; font-size: 12px; font-weight: 700; color: var(--indigo2); background: transparent; transition: all 0.2s; }
+    .source-btn.active { background: var(--indigo); color: white; }
+
+    .source-panel { display: none; width: 100%; flex-direction: column; gap: 8px; }
+    .source-panel.active { display: flex; }
+
+    /* YouTube URL input */
+    .yt-row { display: flex; gap: 8px; width: 100%; }
+    .yt-input { flex: 1; padding: 9px 14px; border-radius: 999px; border: 1.5px solid rgba(45,43,85,0.15); background: rgba(255,255,255,0.6); font-family: 'Nunito', sans-serif; font-size: 12px; color: var(--indigo); outline: none; transition: border-color 0.2s; }
+    .yt-input:focus { border-color: var(--indigo); background: rgba(255,255,255,0.85); }
+    .yt-input::placeholder { color: var(--indigo2); opacity: 0.5; }
+    .yt-load-btn { padding: 9px 14px; border-radius: 999px; border: none; cursor: pointer; background: var(--indigo); color: white; font-family: 'Nunito', sans-serif; font-size: 12px; font-weight: 700; transition: opacity 0.2s; white-space: nowrap; }
+    .yt-load-btn:hover { opacity: 0.85; }
+
+    /* Pixel art display */
+    .pixel-art-display { width: 190px; height: 190px; border-radius: 16px; position: relative; overflow: hidden; box-shadow: 0 8px 32px rgba(45,43,85,0.18); image-rendering: pixelated; background: linear-gradient(135deg, #C4D4F2 0%, #F2C4CE 50%, #C4F2E3 100%); }
+    .pixel-art-display::after { content: ''; position: absolute; inset: 0; background-image: linear-gradient(rgba(45,43,85,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(45,43,85,0.04) 1px, transparent 1px); background-size: 11px 11px; }
+    .pixel-art-placeholder { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; font-family: 'Press Start 2P', monospace; font-size: 7px; color: var(--indigo); opacity: 0.6; text-align: center; line-height: 1.8; z-index: 1; padding: 16px; }
+    .pixel-art-placeholder .note { font-size: 32px; font-family: sans-serif; }
+
+    /* Song info */
+    .song-info { text-align: center; width: 100%; }
+    .song-title  { font-family: 'Press Start 2P', monospace; font-size: 9px; color: var(--indigo); line-height: 1.6; margin-bottom: 6px; }
+    .song-artist { font-size: 13px; font-weight: 700; color: var(--indigo2); }
+    .song-album  { font-size: 11px; color: var(--indigo2); opacity: 0.7; margin-top: 2px; }
+
+    /* Progress bar */
+    .progress-wrap { width: 100%; display: flex; flex-direction: column; gap: 5px; }
+    .progress-track { width: 100%; height: 4px; border-radius: 999px; background: rgba(45,43,85,0.12); cursor: pointer; }
+    .progress-fill { width: 0%; height: 100%; border-radius: 999px; background: var(--indigo); transition: width 0.1s linear; }
+    .progress-times { display: flex; justify-content: space-between; font-size: 10px; color: var(--indigo2); opacity: 0.7; }
+
+    /* Controls row */
+    .controls { display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; }
+    .ctrl-btn { border: none; background: none; cursor: pointer; color: var(--indigo); display: flex; align-items: center; justify-content: center; border-radius: 50%; transition: all 0.15s; font-size: 17px; width: 38px; height: 38px; opacity: 0.7; }
+    .ctrl-btn:hover { opacity: 1; background: rgba(45,43,85,0.08); transform: scale(1.1); }
+    .ctrl-btn.play { width: 52px; height: 52px; font-size: 20px; background: var(--indigo); color: white; opacity: 1; box-shadow: 0 4px 16px rgba(45,43,85,0.25); }
+    .ctrl-btn.play:hover { transform: scale(1.08); background: var(--indigo2); }
+    .ctrl-btn.toggled { opacity: 1; color: #7B78D8; }
+
+    /* Queue button — opens the queue panel */
+    .ctrl-btn.queue-toggle { font-size: 14px; }
+
+    /* Volume */
+    .volume-wrap { display: flex; align-items: center; gap: 10px; width: 100%; padding: 0 4px; }
+    .volume-icon { font-size: 15px; opacity: 0.6; flex-shrink: 0; }
+    .volume-slider { flex: 1; -webkit-appearance: none; appearance: none; height: 4px; border-radius: 999px; background: rgba(45,43,85,0.12); cursor: pointer; outline: none; }
+    .volume-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 13px; height: 13px; border-radius: 50%; background: var(--indigo); cursor: pointer; transition: transform 0.15s; }
+    .volume-slider::-webkit-slider-thumb:hover { transform: scale(1.3); }
+
+    /* ============================================================
+       QUEUE PANEL
+       Slides in from the right side of the player area.
+       Uses position: absolute so it overlays the content without
+       pushing other elements around. transform: translateX(100%)
+       hides it off-screen to the right; .open brings it back in.
+    ============================================================ */
+    .queue-panel {
+      position: absolute; top: 0; right: 0; bottom: 0;
+      width: 300px; z-index: 50;
+      background: rgba(255,255,255,0.55); backdrop-filter: blur(20px);
+      border-left: 1px solid rgba(255,255,255,0.7);
+      display: flex; flex-direction: column;
+      transform: translateX(100%); /* hidden off-screen to the right */
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .queue-panel.open { transform: translateX(0); } /* slide in */
+
+    .queue-header { display: flex; align-items: center; justify-content: space-between; padding: 18px 16px 12px; border-bottom: 1px solid rgba(45,43,85,0.08); }
+    .queue-heading { font-family: 'Press Start 2P', monospace; font-size: 8px; color: var(--indigo); }
+    .queue-close { background: none; border: none; cursor: pointer; font-size: 18px; color: var(--indigo2); opacity: 0.6; line-height: 1; padding: 4px; border-radius: 50%; transition: opacity 0.15s; }
+    .queue-close:hover { opacity: 1; }
+
+    /* Now Playing section inside queue */
+    .queue-now { padding: 12px 16px; border-bottom: 1px solid rgba(45,43,85,0.08); }
+    .queue-section-label { font-size: 10px; font-weight: 700; color: var(--indigo2); opacity: 0.6; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+    .queue-now-song { font-size: 13px; font-weight: 700; color: var(--indigo); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .queue-now-artist { font-size: 11px; color: var(--indigo2); margin-top: 2px; }
+
+    /* Up Next list inside queue */
+    .queue-list { flex: 1; overflow-y: auto; padding: 12px 10px; display: flex; flex-direction: column; gap: 4px; }
+    .queue-empty { text-align: center; color: var(--indigo2); opacity: 0.5; font-size: 12px; padding: 24px 16px; line-height: 1.8; }
+
+    /*
+      Each row in the queue Up Next list.
+      We use CSS grid so the drag handle, song info, and remove button
+      line up cleanly without flex math.
+    */
+    .queue-row {
+      display: grid;
+      grid-template-columns: 20px 1fr 28px; /* handle | info | remove */
+      align-items: center; gap: 8px;
+      padding: 8px 10px; border-radius: 10px;
+      background: rgba(255,255,255,0.4);
+      border: 1px solid rgba(255,255,255,0.6);
+      transition: background 0.15s;
+      cursor: default;
+    }
+    .queue-row:hover { background: rgba(255,255,255,0.65); }
+    .queue-row.playing { background: rgba(123,120,216,0.12); border-color: rgba(123,120,216,0.3); }
+
+    .queue-drag { font-size: 14px; opacity: 0.3; cursor: grab; user-select: none; }
+    .queue-song-name { font-size: 12px; font-weight: 700; color: var(--indigo); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .queue-song-artist { font-size: 10px; color: var(--indigo2); }
+    .queue-remove { background: none; border: none; cursor: pointer; font-size: 14px; color: var(--indigo2); opacity: 0.4; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+    .queue-remove:hover { opacity: 1; background: rgba(45,43,85,0.1); }
+
+    /* ============================================================
+       DISCOVER PAGE
+    ============================================================ */
+    .discover-page { display: none; flex: 1; padding: 36px; overflow-y: auto; }
+    .discover-page.active { display: block; }
+    .discover-heading { font-family: 'Press Start 2P', monospace; font-size: 11px; color: var(--indigo); margin-bottom: 20px; }
+    .discover-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px; }
+    .discover-card { background: rgba(255,255,255,0.40); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.7); border-radius: 16px; padding: 14px; cursor: pointer; transition: transform 0.15s, box-shadow 0.15s; display: flex; flex-direction: column; gap: 8px; }
+    .discover-card:hover { transform: translateY(-4px); box-shadow: var(--shadow); }
+    .discover-thumb { width: 100%; aspect-ratio: 1; border-radius: 10px; image-rendering: pixelated; }
+    .discover-song   { font-size: 12px; font-weight: 700; color: var(--indigo); }
+    .discover-artist { font-size: 10px; color: var(--indigo2); }
+
+    /* ============================================================
+       LIBRARY PAGE
+       Three sections: Recently Played, All Songs, Most Played.
+       Each section has a heading + a list of song rows.
+    ============================================================ */
+    .library-page { display: none; flex: 1; padding: 28px 36px; overflow-y: auto; flex-direction: column; gap: 28px; }
+    .library-page.active { display: flex; }
+
+    .lib-section { display: flex; flex-direction: column; gap: 10px; }
+
+    /* Section header row: heading + upload button (on the All Songs section) */
+    .lib-section-header { display: flex; align-items: center; justify-content: space-between; }
+    .lib-section-title { font-family: 'Press Start 2P', monospace; font-size: 8px; color: var(--indigo); letter-spacing: 1px; }
+
+    /* Upload button — lives in Library > All Songs header */
+    .upload-btn {
+      display: flex; align-items: center; gap: 6px;
+      padding: 8px 16px; border-radius: 999px; cursor: pointer;
+      background: var(--indigo); color: white;
+      font-family: 'Nunito', sans-serif; font-size: 12px; font-weight: 700;
+      border: none; transition: opacity 0.2s;
+    }
+    .upload-btn:hover { opacity: 0.85; }
+    #file-input { display: none; } /* hidden, triggered by upload-btn click */
+
+    /*
+      Individual song row in the Library.
+      Grid layout: thumbnail | song info | action buttons
+    */
+    .lib-row {
+      display: grid;
+      grid-template-columns: 44px 1fr auto; /* thumb | info | actions */
+      align-items: center; gap: 12px;
+      padding: 10px 14px; border-radius: var(--radius);
+      background: rgba(255,255,255,0.40); backdrop-filter: blur(8px);
+      border: 1px solid rgba(255,255,255,0.65);
+      transition: background 0.15s;
+    }
+    .lib-row:hover { background: rgba(255,255,255,0.62); }
+    .lib-row.is-playing { border-color: rgba(123,120,216,0.4); background: rgba(123,120,216,0.08); }
+
+    .lib-thumb { width: 44px; height: 44px; border-radius: 8px; image-rendering: pixelated; flex-shrink: 0; }
+    .lib-info { min-width: 0; }
+    .lib-song-name   { font-size: 13px; font-weight: 700; color: var(--indigo); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .lib-song-meta   { font-size: 11px; color: var(--indigo2); margin-top: 2px; }
+
+    /* Action buttons on each library row */
+    .lib-actions { display: flex; gap: 6px; align-items: center; flex-shrink: 0; }
+    .lib-btn { background: none; border: none; cursor: pointer; font-size: 16px; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--indigo2); opacity: 0.55; transition: all 0.15s; }
+    .lib-btn:hover { opacity: 1; background: rgba(45,43,85,0.1); }
+
+    /* Play count badge shown in Most Played section */
+    .play-badge { font-size: 10px; font-weight: 700; color: var(--indigo2); opacity: 0.6; background: rgba(45,43,85,0.07); padding: 3px 8px; border-radius: 999px; white-space: nowrap; }
+
+    /* Empty state shown when a section has no songs */
+    .lib-empty { font-size: 13px; color: var(--indigo2); opacity: 0.5; padding: 12px 4px; }
+
+    /* ============================================================
+       THREE-DOT CONTEXT MENU
+       Appears when ⋯ is clicked on any song row.
+       position: fixed so it floats above all other content.
+       Contains grouped actions separated by dividers.
+    ============================================================ */
+    .queue-popup {
+      position: fixed; z-index: 200;
+      background: rgba(255,255,255,0.95); backdrop-filter: blur(24px);
+      border: 1px solid rgba(255,255,255,0.9); border-radius: 16px;
+      box-shadow: 0 8px 40px rgba(45,43,85,0.20);
+      padding: 6px;
+      display: none; flex-direction: column; gap: 1px;
+      min-width: 200px;
+    }
+    .queue-popup.visible { display: flex; }
+
+    /* Individual menu item button */
+    .popup-btn {
+      background: none; border: none; cursor: pointer; text-align: left;
+      padding: 10px 14px; border-radius: 10px;
+      font-family: 'Nunito', sans-serif; font-size: 13px; font-weight: 700;
+      color: var(--indigo); transition: background 0.15s;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .popup-btn:hover { background: rgba(45,43,85,0.07); }
+
+    /* Danger action (Delete) gets a red tint */
+    .popup-btn.danger { color: #C0392B; }
+    .popup-btn.danger:hover { background: rgba(192,57,43,0.08); }
+
+    /* Favorited state — heart turns pink when active */
+    .popup-btn.favorited { color: #E8537A; }
+
+    /* Thin divider line between menu groups */
+    .popup-divider { height: 1px; background: rgba(45,43,85,0.08); margin: 4px 6px; }
+
+    /* Small section label inside the menu (e.g. "Add to Playlist") */
+    .popup-label { font-size: 10px; font-weight: 700; color: var(--indigo2); opacity: 0.5; padding: 6px 14px 2px; text-transform: uppercase; letter-spacing: 1px; }
+
+    /* ============================================================
+       SIMILAR SONGS NUDGE — slides up from bottom right
+    ============================================================ */
+    .similar-nudge { position: fixed; bottom: 28px; right: 28px; background: rgba(255,255,255,0.75); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.85); border-radius: 20px; box-shadow: var(--shadow); padding: 14px 18px; display: flex; flex-direction: column; gap: 10px; width: 250px; z-index: 100; transform: translateY(120%); transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1); }
+    .similar-nudge.show { transform: translateY(0); }
+    .nudge-label  { font-family: 'Press Start 2P', monospace; font-size: 7px; color: var(--indigo2); opacity: 0.8; }
+    .nudge-card   { display: flex; align-items: center; gap: 12px; }
+    .nudge-thumb  { width: 44px; height: 44px; border-radius: 10px; flex-shrink: 0; image-rendering: pixelated; background: linear-gradient(135deg, var(--cream), var(--pink)); }
+    .nudge-info   { flex: 1; }
+    .nudge-song   { font-size: 12px; font-weight: 700; color: var(--indigo); }
+    .nudge-artist { font-size: 10px; color: var(--indigo2); }
+    .nudge-actions{ display: flex; gap: 8px; }
+    .nudge-btn    { flex: 1; padding: 7px; border-radius: 999px; border: none; cursor: pointer; font-family: 'Nunito', sans-serif; font-size: 12px; font-weight: 700; transition: all 0.15s; }
+    .nudge-btn.primary   { background: var(--indigo); color: white; }
+    .nudge-btn.secondary { background: rgba(45,43,85,0.08); color: var(--indigo); }
+    .nudge-btn:hover { opacity: 0.85; transform: scale(1.03); }
+
+    /* ============================================================
+       TOAST — brief feedback message
+    ============================================================ */
+    .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--indigo); color: white; padding: 9px 20px; border-radius: 999px; font-size: 12px; font-weight: 700; opacity: 0; transition: all 0.3s; z-index: 300; white-space: nowrap; }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* Hidden YouTube container */
+    #yt-container { position: fixed; bottom: -9999px; left: -9999px; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+  </style>
+</head>
+<body>
+
+<div class="bg" aria-hidden="true"></div>
+
+<div class="app">
+
+  <!-- ============================================================
+       TOP NAV — now has three tabs: Player, Library, Discover
+  ============================================================ -->
+  <nav class="top-nav" aria-label="Main navigation">
+    <span class="logo">PixelPlay</span>
+    <div class="nav-tabs" role="tablist">
+      <button class="nav-tab active" data-tab="player"   role="tab" aria-selected="true" >▶ Player</button>
+      <button class="nav-tab"        data-tab="library"  role="tab" aria-selected="false">♫ Library</button>
+      <button class="nav-tab"        data-tab="discover" role="tab" aria-selected="false">✦ Discover</button>
+    </div>
+  </nav>
+
+  <div class="main">
+
+    <!-- LEFT SIDEBAR — Recommendations -->
+    <aside class="sidebar" aria-label="Recommendations">
+      <p class="sidebar-title">You might also like</p>
+      <div class="rec-card" tabindex="0" role="button">
+        <div class="rec-thumb" style="background:linear-gradient(135deg,#F2C4CE,#C4D4F2)"></div>
+        <div class="rec-info"><div class="rec-song">Starlight</div><div class="rec-artist">Muse</div></div>
+      </div>
+      <div class="rec-card" tabindex="0" role="button">
+        <div class="rec-thumb" style="background:linear-gradient(135deg,#C4F2E3,#F2EAC4)"></div>
+        <div class="rec-info"><div class="rec-song">Breathe</div><div class="rec-artist">Télépopmusik</div></div>
+      </div>
+      <div class="rec-card" tabindex="0" role="button">
+        <div class="rec-thumb" style="background:linear-gradient(135deg,#C4D4F2,#C4F2E3)"></div>
+        <div class="rec-info"><div class="rec-song">Sweater Weather</div><div class="rec-artist">The Neighbourhood</div></div>
+      </div>
+      <div class="sidebar-divider"></div>
+      <p class="sidebar-title">Similar songs</p>
+      <div class="rec-card" tabindex="0" role="button">
+        <div class="rec-thumb" style="background:linear-gradient(135deg,#F2EAC4,#F2C4CE)"></div>
+        <div class="rec-info"><div class="rec-song">Midnight City</div><div class="rec-artist">M83</div></div>
+      </div>
+      <div class="rec-card" tabindex="0" role="button">
+        <div class="rec-thumb" style="background:linear-gradient(135deg,#C4F2E3,#C4D4F2)"></div>
+        <div class="rec-info"><div class="rec-song">Intro</div><div class="rec-artist">The xx</div></div>
+      </div>
+    </aside>
+
+    <!-- ============================================================
+         PLAYER TAB CONTENT
+    ============================================================ -->
+    <main class="center-stage" id="view-player" aria-label="Now playing">
+      <div class="player-card">
+
+        <!-- Source toggle -->
+        <div class="source-toggle" role="group" aria-label="Music source">
+          <button class="source-btn active" id="btn-local" aria-pressed="true">📁 Local File</button>
+          <button class="source-btn"        id="btn-yt"   aria-pressed="false">▶ YouTube</button>
+        </div>
+
+        <!-- Local file panel: no upload UI here — moved to Library -->
+        <div class="source-panel active" id="panel-local">
+          <div style="text-align:center; font-size:12px; color:var(--indigo2); opacity:0.7; padding:4px 0;">
+            Upload songs in the <strong>♫ Library</strong> tab, then play them here.
+          </div>
+        </div>
+
+        <!-- YouTube panel -->
+        <div class="source-panel" id="panel-yt">
+          <div class="yt-row">
+            <input class="yt-input" id="yt-url-input" type="url" placeholder="Paste a YouTube URL..." aria-label="YouTube URL"/>
+            <button class="yt-load-btn" id="yt-load-btn">Load ▶</button>
+          </div>
+        </div>
+
+        <!-- Pixel art display -->
+        <div class="pixel-art-display" role="img" aria-label="Now playing pixel art">
+          <div class="pixel-art-placeholder" aria-hidden="true">
+            <span class="note">♪</span>
+            <span>pixel art<br/>loads here</span>
+          </div>
+        </div>
+
+        <!-- Song info -->
+        <div class="song-info">
+          <div class="song-title"  id="song-title">No Song Playing</div>
+          <div class="song-artist" id="song-artist">—</div>
+          <div class="song-album"  id="song-album">Add songs in Library, or paste a YouTube URL</div>
+        </div>
+
+        <!-- Progress bar -->
+        <div class="progress-wrap" aria-label="Song progress">
+          <div class="progress-track" id="progress-track" role="slider" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Seek">
+            <div class="progress-fill" id="progress-fill"></div>
+          </div>
+          <div class="progress-times" aria-hidden="true">
+            <span id="time-current">0:00</span>
+            <span id="time-total">0:00</span>
+          </div>
+        </div>
+
+        <!-- Controls — queue toggle button added -->
+        <div class="controls" aria-label="Playback controls">
+          <button class="ctrl-btn" id="btn-shuffle" aria-label="Shuffle" title="Shuffle">⇄</button>
+          <button class="ctrl-btn" id="btn-prev"    aria-label="Previous song">⏮</button>
+          <button class="ctrl-btn play" id="btn-play" aria-label="Play">▶</button>
+          <button class="ctrl-btn" id="btn-next"    aria-label="Next song">⏭</button>
+          <button class="ctrl-btn queue-toggle" id="btn-queue" aria-label="Show queue" title="Queue">≡</button>
+        </div>
+
+        <!-- Volume -->
+        <div class="volume-wrap" aria-label="Volume control">
+          <span class="volume-icon" id="volume-icon" aria-hidden="true">🔈</span>
+          <input class="volume-slider" id="volume-slider" type="range" min="0" max="100" value="70" aria-label="Volume"/>
+        </div>
+
+      </div><!-- end .player-card -->
+
+      <!-- ============================================================
+           QUEUE PANEL — slides in over the right side of the player view
+           Contains: Now Playing + Up Next list
+      ============================================================ -->
+      <div class="queue-panel" id="queue-panel" aria-label="Queue">
+        <div class="queue-header">
+          <span class="queue-heading">Queue</span>
+          <button class="queue-close" id="queue-close" aria-label="Close queue">✕</button>
+        </div>
+
+        <!-- Now Playing section inside queue -->
+        <div class="queue-now">
+          <div class="queue-section-label">Now Playing</div>
+          <div class="queue-now-song"   id="q-now-song">—</div>
+          <div class="queue-now-artist" id="q-now-artist">—</div>
+        </div>
+
+        <!-- Up Next list — populated by JavaScript -->
+        <div style="padding: 10px 16px 4px;">
+          <div class="queue-section-label">Up Next</div>
+        </div>
+        <div class="queue-list" id="queue-list">
+          <div class="queue-empty">Queue is empty.<br/>Add songs from the Library ♫</div>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- ============================================================
+         LIBRARY TAB CONTENT
+    ============================================================ -->
+    <section class="library-page" id="view-library" aria-label="Your music library">
+
+      <!-- RECENTLY PLAYED section -->
+      <div class="lib-section" id="section-recent">
+        <div class="lib-section-header">
+          <span class="lib-section-title">Recently Played</span>
+        </div>
+        <div id="recent-list">
+          <div class="lib-empty">Nothing played yet. Upload some songs!</div>
+        </div>
+      </div>
+
+      <!-- ALL SONGS section — upload button lives here -->
+      <div class="lib-section" id="section-all">
+        <div class="lib-section-header">
+          <span class="lib-section-title">All Songs</span>
+          <!--
+            Upload button: clicking it triggers the hidden file input below.
+            for="file-input" connects this button to the input element.
+          -->
+          <button class="upload-btn" id="upload-btn-lib" aria-label="Upload songs">
+            ＋ Upload Songs
+          </button>
+        </div>
+        <!-- Hidden file input — triggered by button above -->
+        <input type="file" id="file-input" accept=".mp3,.wav,.flac,.ogg,.m4a,.aac" multiple/>
+        <div id="all-songs-list">
+          <div class="lib-empty">No songs yet. Click "Upload Songs" to add music.</div>
+        </div>
+      </div>
+
+      <!-- MOST PLAYED section -->
+      <div class="lib-section" id="section-most">
+        <div class="lib-section-header">
+          <span class="lib-section-title">Most Played</span>
+        </div>
+        <div id="most-played-list">
+          <div class="lib-empty">Play some songs to see your top tracks here.</div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ============================================================
+         DISCOVER TAB CONTENT
+    ============================================================ -->
+    <section class="discover-page" id="view-discover" aria-label="Discover new music">
+      <h1 class="discover-heading">Discover</h1>
+      <div class="discover-grid">
+        <div class="discover-card" tabindex="0" role="button"><div class="discover-thumb" style="background:linear-gradient(135deg,#F2C4CE,#C4F2E3)"></div><div class="discover-song">Electric Feel</div><div class="discover-artist">MGMT</div></div>
+        <div class="discover-card" tabindex="0" role="button"><div class="discover-thumb" style="background:linear-gradient(135deg,#C4D4F2,#F2EAC4)"></div><div class="discover-song">Bloom</div><div class="discover-artist">Beach House</div></div>
+        <div class="discover-card" tabindex="0" role="button"><div class="discover-thumb" style="background:linear-gradient(135deg,#C4F2E3,#C4D4F2)"></div><div class="discover-song">Taro</div><div class="discover-artist">Alt-J</div></div>
+        <div class="discover-card" tabindex="0" role="button"><div class="discover-thumb" style="background:linear-gradient(135deg,#F2EAC4,#F2C4CE)"></div><div class="discover-song">Northern Lights</div><div class="discover-artist">Washed Out</div></div>
+        <div class="discover-card" tabindex="0" role="button"><div class="discover-thumb" style="background:linear-gradient(135deg,#F2C4CE,#C4D4F2)"></div><div class="discover-song">Gone Gone Beyond</div><div class="discover-artist">Still Woozy</div></div>
+        <div class="discover-card" tabindex="0" role="button"><div class="discover-thumb" style="background:linear-gradient(135deg,#C4D4F2,#C4F2E3)"></div><div class="discover-song">Golden</div><div class="discover-artist">Kacey Musgraves</div></div>
+      </div>
+    </section>
+
+  </div><!-- end .main -->
+</div><!-- end .app -->
+
+<!-- SIMILAR SONGS NUDGE -->
+<div class="similar-nudge" id="similar-nudge" role="dialog" aria-label="Similar song suggestion" aria-live="polite">
+  <p class="nudge-label">▶ up next — similar song</p>
+  <div class="nudge-card">
+    <div class="nudge-thumb"></div>
+    <div class="nudge-info">
+      <div class="nudge-song">Motion Picture Soundtrack</div>
+      <div class="nudge-artist">Radiohead</div>
+    </div>
+  </div>
+  <div class="nudge-actions">
+    <button class="nudge-btn primary"    id="nudge-play">Play it ▶</button>
+    <button class="nudge-btn secondary"  id="nudge-skip">Skip</button>
+  </div>
+</div>
+
+<!--
+  THREE-DOT CONTEXT MENU
+  Appears when ⋯ is clicked on any song row.
+  Groups: Playback | Library | Danger
+  Positioned by JavaScript near the clicked button.
+-->
+<div class="queue-popup" id="queue-popup" role="menu" aria-label="Song options">
+
+  <!-- GROUP 1: Playback actions -->
+  <button class="popup-btn" id="popup-play-now"   role="menuitem">▶ Play Now</button>
+  <button class="popup-btn" id="popup-play-next"  role="menuitem">⏭ Play Next</button>
+  <button class="popup-btn" id="popup-add-queue"  role="menuitem">＋ Add to Queue</button>
+
+  <div class="popup-divider"></div>
+
+  <!-- GROUP 2: Library actions -->
+  <button class="popup-btn" id="popup-favorite"   role="menuitem">♡ Favorite</button>
+  <button class="popup-btn" id="popup-playlist"   role="menuitem">♫ Add to Playlist</button>
+  <button class="popup-btn" id="popup-download"   role="menuitem">⬇ Save for Offline</button>
+
+  <div class="popup-divider"></div>
+
+  <!-- GROUP 3: Destructive actions -->
+  <button class="popup-btn danger" id="popup-delete" role="menuitem">✕ Remove from Library</button>
+
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast" aria-live="polite"></div>
+
+<!-- YouTube API -->
+<script src="https://www.youtube.com/iframe_api"></script>
+<div id="yt-container"></div>
+
+<script>
+  /* ============================================================
+     SECTION 1 — DOM REFERENCES
+     Grab every element we'll interact with via JavaScript.
+  ============================================================ */
+  const btnLocal       = document.getElementById('btn-local');
+  const btnYT          = document.getElementById('btn-yt');
+  const panelLocal     = document.getElementById('panel-local');
+  const panelYT        = document.getElementById('panel-yt');
+  const fileInput      = document.getElementById('file-input');
+  const ytUrlInput     = document.getElementById('yt-url-input');
+  const ytLoadBtn      = document.getElementById('yt-load-btn');
+  const btnPlay        = document.getElementById('btn-play');
+  const btnPrev        = document.getElementById('btn-prev');
+  const btnNext        = document.getElementById('btn-next');
+  const btnShuffle     = document.getElementById('btn-shuffle');
+  const btnQueue       = document.getElementById('btn-queue');
+  const progressTrack  = document.getElementById('progress-track');
+  const progressFill   = document.getElementById('progress-fill');
+  const timeCurrent    = document.getElementById('time-current');
+  const timeTotal      = document.getElementById('time-total');
+  const volumeSlider   = document.getElementById('volume-slider');
+  const volumeIcon     = document.getElementById('volume-icon');
+  const songTitleEl    = document.getElementById('song-title');
+  const songArtistEl   = document.getElementById('song-artist');
+  const songAlbumEl    = document.getElementById('song-album');
+  const queuePanel     = document.getElementById('queue-panel');
+  const queueClose     = document.getElementById('queue-close');
+  const queueList      = document.getElementById('queue-list');
+  const qNowSong       = document.getElementById('q-now-song');
+  const qNowArtist     = document.getElementById('q-now-artist');
+  const nudge          = document.getElementById('similar-nudge');
+  const toastEl        = document.getElementById('toast');
+  const uploadBtnLib   = document.getElementById('upload-btn-lib');
+  const queuePopup     = document.getElementById('queue-popup');
+  // popup buttons are now wired directly in Section 8 via getElementById
+
+  /* ============================================================
+     SECTION 2 — APP STATE
+     All mutable data lives here in one place. This makes it easy
+     to understand the current condition of the app at any moment.
+  ============================================================ */
+  const state = {
+    mode: 'local',         // 'local' or 'youtube'
+    isPlaying: false,
+    isShuffle: false,
+    isRepeat: false,
+
+    /*
+      The queue is an array of song objects.
+      Each song object looks like: { name: 'Song Title', file: File }
+      currentQueueIndex tells us which song in the queue is playing now.
+    */
+    queue: [],
+    currentQueueIndex: -1, // -1 means nothing is playing yet
+
+    /*
+      allSongs stores every file the user has ever uploaded this session.
+      It persists across tab switches but resets on page reload
+      (since File objects can't be stored in localStorage — they're too big).
+    */
+    allSongs: [],
+
+    // The song that the popup menu is currently targeting
+    popupTargetSong: null,
+
+    /*
+      favorites is a Set of song name strings.
+      A Set automatically prevents duplicates and has fast has/add/delete.
+      Loaded from localStorage on startup so favorites persist between sessions.
+    */
+    favorites: new Set(JSON.parse(localStorage.getItem('pp_favorites') || '[]')),
+  };
+
+  /* ============================================================
+     SECTION 3 — LOCAL STORAGE
+     Persists small data between sessions: volume, play history.
+     NOTE: We can't store File objects in localStorage (they're binary).
+     So allSongs resets on reload — the user re-uploads each session.
+     In a real app with a backend, files would be stored server-side.
+  ============================================================ */
+  const savedVolume = localStorage.getItem('pp_volume') ?? '70';
+  volumeSlider.value = savedVolume;
+
+  let listenHistory = JSON.parse(localStorage.getItem('pp_history') || '[]');
+  // listenHistory = array of { title: string, playCount: number, lastPlayed: timestamp }
+
+  function saveVolume(val) { localStorage.setItem('pp_volume', val); }
+
+  /*
+    Records a song play in history.
+    Updates playCount if song exists, adds new entry if not.
+    Also saves timestamp for "Recently Played" sorting.
+  */
+  function recordPlay(title) {
+    const existing = listenHistory.find(item => item.title === title);
+    if (existing) {
+      existing.playCount++;
+      existing.lastPlayed = Date.now();
+    } else {
+      listenHistory.push({ title, playCount: 1, lastPlayed: Date.now() });
+    }
+    localStorage.setItem('pp_history', JSON.stringify(listenHistory));
+    localStorage.setItem('pp_lastSong', title);
+  }
+
+  /* ============================================================
+     SECTION 4 — AUDIO ENGINE
+     The HTML5 Audio element handles local file decoding and playback.
+  ============================================================ */
+  const audio = new Audio();
+  audio.volume = savedVolume / 100;
+
+  /* ============================================================
+     SECTION 5 — HELPERS
+  ============================================================ */
+
+  // Convert seconds to "m:ss" display format
+  function formatTime(s) {
+    if (isNaN(s) || s === Infinity) return '0:00';
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    return `${m}:${sec.toString().padStart(2, '0')}`;
+  }
+
+  // Show a brief toast notification that auto-dismisses
+  function showToast(msg) {
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    setTimeout(() => toastEl.classList.remove('show'), 2200);
+  }
+
+  // Update volume speaker icon based on value
+  function updateVolumeIcon(val) {
+    volumeIcon.textContent = val == 0 ? '🔇' : val < 50 ? '🔈' : '🔊';
+  }
+
+  // Update song title/artist/album in the player card
+  function updateSongInfo(title, artist = '—', album = '') {
+    songTitleEl.textContent = title;
+    songArtistEl.textContent = artist;
+    songAlbumEl.textContent  = album;
+  }
+
+  // Toggle the play button icon between ▶ and ⏸
+  function updatePlayBtn(playing) {
+    btnPlay.textContent = playing ? '⏸' : '▶';
+    btnPlay.setAttribute('aria-label', playing ? 'Pause' : 'Play');
+  }
+
+  /*
+    Generate a pastel gradient for song thumbnails.
+    Each song gets a unique gradient based on its name.
+    We use a simple hash of the song name to pick colors.
+  */
+  const gradients = [
+    'linear-gradient(135deg,#F2C4CE,#C4D4F2)',
+    'linear-gradient(135deg,#C4F2E3,#F2EAC4)',
+    'linear-gradient(135deg,#C4D4F2,#C4F2E3)',
+    'linear-gradient(135deg,#F2EAC4,#F2C4CE)',
+    'linear-gradient(135deg,#C4F2E3,#C4D4F2)',
+    'linear-gradient(135deg,#F2C4CE,#C4F2E3)',
+  ];
+  function getGradient(name) {
+    // Simple hash: sum the character codes of the name, mod by number of gradients
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) hash += name.charCodeAt(i);
+    return gradients[hash % gradients.length];
+  }
+
+  /* ============================================================
+     SECTION 6 — TAB NAVIGATION
+     Switches between Player, Library, and Discover views.
+  ============================================================ */
+  const tabButtons = document.querySelectorAll('.nav-tab');
+  const views = {
+    player:   document.getElementById('view-player'),
+    library:  document.getElementById('view-library'),
+    discover: document.getElementById('view-discover'),
+  };
+
+  function switchTab(tabName) {
+    // Update tab button appearances
+    tabButtons.forEach(btn => {
+      const isActive = btn.dataset.tab === tabName;
+      btn.classList.toggle('active', isActive);
+      btn.setAttribute('aria-selected', isActive);
+    });
+
+    // Show the matching view, hide the others
+    Object.entries(views).forEach(([name, el]) => {
+      if (name === 'player') {
+        // Player uses display:flex, others use display:block via .active class
+        el.style.display = name === tabName ? 'flex' : 'none';
+      } else {
+        el.classList.toggle('active', name === tabName);
+      }
+    });
+  }
+
+  tabButtons.forEach(btn => {
+    btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+  });
+
+  /* ============================================================
+     SECTION 7 — QUEUE SYSTEM
+     The queue is an array of song objects: [{ name, file }, ...]
+     currentQueueIndex tracks which song is currently playing.
+
+     Two ways to add to queue (chosen via popup):
+     - "Play Next": inserts at currentQueueIndex + 1
+     - "Add to Queue": appends to the end
+
+     Apple/Spotify behavior we're replicating:
+     - The current song stays playing
+     - "Up Next" shows everything after the current song
+     - Clicking a song in the queue jumps to it
+     - Removing a song from queue doesn't stop playback
+  ============================================================ */
+
+  /*
+    Renders the queue panel UI.
+    Reads from state.queue and state.currentQueueIndex.
+    Called whenever the queue changes.
+  */
+  function renderQueue() {
+    // Update "Now Playing" section
+    const current = state.queue[state.currentQueueIndex];
+    if (current) {
+      qNowSong.textContent   = current.name;
+      qNowArtist.textContent = 'Local File';
+    } else {
+      qNowSong.textContent   = '—';
+      qNowArtist.textContent = '—';
+    }
+
+    // Build "Up Next" list — everything AFTER the current song
+    const upNext = state.queue.slice(state.currentQueueIndex + 1);
+
+    if (upNext.length === 0) {
+      queueList.innerHTML = '<div class="queue-empty">Nothing up next.<br/>Add songs from Library ♫</div>';
+      return;
+    }
+
+    /*
+      Build HTML for each upcoming song row.
+      We store the absolute queue index in data-queue-index so we can
+      identify which row was clicked for removal or jumping.
+    */
+    queueList.innerHTML = upNext.map((song, i) => {
+      const absoluteIndex = state.currentQueueIndex + 1 + i;
+      return `
+        <div class="queue-row" data-queue-index="${absoluteIndex}">
+          <span class="queue-drag" aria-hidden="true">⠿</span>
+          <div>
+            <div class="queue-song-name">${escapeHTML(song.name)}</div>
+            <div class="queue-song-artist">Local File</div>
+          </div>
+          <button class="queue-remove" data-remove-index="${absoluteIndex}" aria-label="Remove ${escapeHTML(song.name)} from queue">✕</button>
+        </div>
+      `;
+    }).join('');
+
+    // Wire up remove buttons
+    queueList.querySelectorAll('.queue-remove').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation(); // don't trigger row click
+        const idx = parseInt(btn.dataset.removeIndex);
+        state.queue.splice(idx, 1);
+        // If we removed a song before the current one, adjust the index
+        if (idx <= state.currentQueueIndex) state.currentQueueIndex--;
+        renderQueue();
+        renderLibrary();
+        showToast('Removed from queue');
+      });
+    });
+
+    // Clicking a queue row jumps to that song
+    queueList.querySelectorAll('.queue-row').forEach(row => {
+      row.addEventListener('click', (e) => {
+        if (e.target.classList.contains('queue-remove')) return;
+        const idx = parseInt(row.dataset.queueIndex);
+        playFromQueue(idx);
+      });
+    });
+  }
+
+  /*
+    Adds a song to the queue.
+    mode: 'next' = insert right after current song
+          'end'  = append to end of queue
+  */
+  function addToQueue(song, mode) {
+    if (mode === 'next') {
+      // Insert right after the current song
+      const insertAt = state.currentQueueIndex + 1;
+      state.queue.splice(insertAt, 0, song);
+      showToast(`Playing next: ${song.name}`);
+    } else {
+      // Append to end
+      state.queue.push(song);
+      showToast(`Added to queue: ${song.name}`);
+    }
+    renderQueue();
+    renderLibrary();
+  }
+
+  /*
+    Loads and plays a song at a specific queue index.
+    This is the core playback function for local files.
+  */
+  function playFromQueue(index) {
+    const song = state.queue[index];
+    if (!song) return;
+
+    state.currentQueueIndex = index;
+
+    // Revoke old blob URL to free memory
+    if (audio.src && audio.src.startsWith('blob:')) URL.revokeObjectURL(audio.src);
+
+    // Create a temporary URL for the local File object
+    audio.src = URL.createObjectURL(song.file);
+
+    updateSongInfo(song.name, 'Local File', `${index + 1} of ${state.queue.length}`);
+    recordPlay(song.name);
+
+    audio.play()
+      .then(() => { state.isPlaying = true; updatePlayBtn(true); })
+      .catch(() => showToast('Could not play this file'));
+
+    renderQueue();
+    renderLibrary(); // update is-playing highlight
+  }
+
+  // Open/close queue panel
+  btnQueue.addEventListener('click', () => {
+    queuePanel.classList.toggle('open');
+    btnQueue.classList.toggle('toggled', queuePanel.classList.contains('open'));
+  });
+  queueClose.addEventListener('click', () => {
+    queuePanel.classList.remove('open');
+    btnQueue.classList.remove('toggled');
+  });
+
+  /* ============================================================
+     SECTION 8 — THREE-DOT CONTEXT MENU
+     Appears when ⋯ is clicked on any song row.
+     Handles: Play Now, Play Next, Add to Queue, Favorite,
+              Add to Playlist, Save for Offline, Remove from Library.
+  ============================================================ */
+
+  /*
+    escapeHTML() is a critical security function.
+    When inserting user-provided text (like a song filename) into HTML,
+    we must escape special characters like < > & to prevent them from
+    being interpreted as HTML tags. This is called XSS prevention.
+    Example: a file named "song<script>.mp3" becomes "song&lt;script&gt;.mp3"
+  */
+  function escapeHTML(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  /*
+    Shows the three-dot menu near the clicked ⋯ button.
+    We calculate position so the menu doesn't go off-screen.
+
+    getBoundingClientRect() returns the element's position
+    relative to the browser viewport (the visible area).
+  */
+  function showQueuePopup(song, buttonEl) {
+    state.popupTargetSong = song;
+
+    const rect       = buttonEl.getBoundingClientRect();
+    const menuWidth  = 210; // approximate menu width in px
+    const menuHeight = 300; // approximate menu height in px
+
+    // Default: open to the left of the button
+    let left = rect.left - menuWidth + rect.width;
+    let top  = rect.bottom + 4;
+
+    // If menu would go off the bottom of the screen, open upward instead
+    if (top + menuHeight > window.innerHeight) top = rect.top - menuHeight - 4;
+    // If menu would go off the left edge, align to left edge
+    if (left < 8) left = 8;
+
+    queuePopup.style.top  = top  + 'px';
+    queuePopup.style.left = left + 'px';
+    queuePopup.classList.add('visible');
+
+    // Update the Favorite button to show current state
+    const favBtn = document.getElementById('popup-favorite');
+    const isFav  = state.favorites.has(song.name);
+    favBtn.textContent = isFav ? '♥ Unfavorite' : '♡ Favorite';
+    favBtn.classList.toggle('favorited', isFav);
+
+    // Show/hide Delete based on whether song is in allSongs
+    const inLibrary = state.allSongs.some(s => s.name === song.name);
+    document.getElementById('popup-delete').style.display = inLibrary ? 'flex' : 'none';
+  }
+
+  function hideQueuePopup() {
+    queuePopup.classList.remove('visible');
+    state.popupTargetSong = null;
+  }
+
+  // Close menu when clicking anywhere outside it
+  document.addEventListener('click', (e) => {
+    if (!queuePopup.contains(e.target)) hideQueuePopup();
+  });
+
+  // ▶ Play Now — plays immediately, jumping the queue
+  document.getElementById('popup-play-now').addEventListener('click', () => {
+    const song = state.popupTargetSong;
+    if (!song) return;
+    hideQueuePopup();
+    // Insert at the next position and immediately play it
+    addToQueue(song, 'next');
+    playFromQueue(state.currentQueueIndex + 1);
+    switchTab('player');
+  });
+
+  // ⏭ Play Next — inserts right after current song
+  document.getElementById('popup-play-next').addEventListener('click', () => {
+    if (state.popupTargetSong) addToQueue(state.popupTargetSong, 'next');
+    hideQueuePopup();
+  });
+
+  // ＋ Add to Queue — appends to end
+  document.getElementById('popup-add-queue').addEventListener('click', () => {
+    if (state.popupTargetSong) addToQueue(state.popupTargetSong, 'end');
+    hideQueuePopup();
+  });
+
+  /*
+    ♡ Favorite — toggles the song in/out of state.favorites (a Set).
+    A Set is like an array but only stores unique values and has
+    fast has/add/delete operations — perfect for a favorites list.
+    We save favorites to localStorage as a JSON array.
+  */
+  document.getElementById('popup-favorite').addEventListener('click', () => {
+    const song = state.popupTargetSong;
+    if (!song) return;
+    if (state.favorites.has(song.name)) {
+      state.favorites.delete(song.name);
+      showToast('Removed from favorites');
+    } else {
+      state.favorites.add(song.name);
+      showToast('♥ Added to favorites!');
+    }
+    // Save favorites to localStorage (convert Set → Array → JSON string)
+    localStorage.setItem('pp_favorites', JSON.stringify([...state.favorites]));
+    renderLibrary();
+    hideQueuePopup();
+  });
+
+  /*
+    ♫ Add to Playlist — placeholder for now.
+    In a future version this will open a playlist picker modal.
+    For now it confirms the action with a toast.
+  */
+  document.getElementById('popup-playlist').addEventListener('click', () => {
+    hideQueuePopup();
+    showToast('Playlists coming soon! ♫');
+  });
+
+  /*
+    ⬇ Save for Offline — triggers a real browser download of the file.
+    We create a temporary <a> element with the download attribute,
+    programmatically click it, then remove it. This is the standard
+    browser trick for triggering file downloads from JavaScript.
+  */
+  document.getElementById('popup-download').addEventListener('click', () => {
+    const song = state.popupTargetSong;
+    if (!song || !song.file) { showToast('No file to download'); hideQueuePopup(); return; }
+
+    const url = URL.createObjectURL(song.file);
+    const a   = document.createElement('a');
+    a.href     = url;
+    a.download = song.file.name; // suggests the original filename to the browser
+    document.body.appendChild(a);
+    a.click();                   // trigger the download dialog
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);    // free the temporary URL from memory
+
+    showToast(`⬇ Downloading ${song.name}`);
+    hideQueuePopup();
+  });
+
+  /*
+    ✕ Remove from Library — removes the song from state.allSongs.
+    Also removes it from the queue if it's in there.
+    Does NOT delete the actual file from the user's computer —
+    it just removes it from PixelPlay's session library.
+  */
+  document.getElementById('popup-delete').addEventListener('click', () => {
+    const song = state.popupTargetSong;
+    if (!song) return;
+
+    // Remove from allSongs array
+    state.allSongs = state.allSongs.filter(s => s.name !== song.name);
+
+    // Remove all instances from the queue
+    const wasInQueue = state.queue.some(s => s.name === song.name);
+    state.queue = state.queue.filter(s => s.name !== song.name);
+
+    // Adjust currentQueueIndex if needed
+    if (state.currentQueueIndex >= state.queue.length) {
+      state.currentQueueIndex = state.queue.length - 1;
+    }
+
+    if (wasInQueue) showToast(`Removed "${song.name}" from queue & library`);
+    else            showToast(`Removed "${song.name}" from library`);
+
+    renderLibrary();
+    renderQueue();
+    hideQueuePopup();
+  });
+
+  /* ============================================================
+     SECTION 9 — LIBRARY RENDERING
+     Builds the three library sections from state.allSongs + listenHistory.
+  ============================================================ */
+
+  function renderLibrary() {
+    renderRecentlyPlayed();
+    renderAllSongs();
+    renderMostPlayed();
+  }
+
+  /*
+    Creates an HTML song row element for the library.
+    Returns a DOM element (not a string) so we can attach event listeners directly.
+    
+    song: { name: string, file: File }
+    showPlayCount: boolean — whether to show the play count badge
+  */
+  function createLibRow(song, showPlayCount = false) {
+    const row = document.createElement('div');
+    row.className = 'lib-row';
+
+    // Highlight if this song is currently playing
+    const isPlaying = state.currentQueueIndex >= 0 &&
+                      state.queue[state.currentQueueIndex]?.name === song.name;
+    if (isPlaying) row.classList.add('is-playing');
+
+    // Get play count from history
+    const histEntry = listenHistory.find(h => h.title === song.name);
+    const playCount = histEntry?.playCount ?? 0;
+
+    // Build the play count badge HTML (only in Most Played section)
+    const badgeHTML = showPlayCount
+      ? `<span class="play-badge">${playCount} play${playCount !== 1 ? 's' : ''}</span>`
+      : '';
+
+    const isFav = state.favorites.has(song.name);
+
+    row.innerHTML = `
+      <div class="lib-thumb" style="background:${getGradient(song.name)}"></div>
+      <div class="lib-info">
+        <div class="lib-song-name">${escapeHTML(song.name)}</div>
+        <div class="lib-song-meta">
+          ${isFav ? '♥ ' : ''}Local File${isPlaying ? ' · ▶ Playing' : ''}
+        </div>
+      </div>
+      <div class="lib-actions">
+        ${badgeHTML}
+        <button class="lib-btn play-btn" aria-label="Play ${escapeHTML(song.name)}">▶</button>
+        <button class="lib-btn dots-btn" aria-label="More options for ${escapeHTML(song.name)}" title="More options">⋯</button>
+      </div>
+    `;
+
+    // ▶ Play button: play immediately (adds to front of queue if nothing playing, else plays next)
+    row.querySelector('.play-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (state.currentQueueIndex === -1 || state.queue.length === 0) {
+        // Nothing in queue — start fresh
+        state.queue = [song];
+        state.currentQueueIndex = 0;
+        playFromQueue(0);
+      } else {
+        // Add as play next and immediately advance
+        addToQueue(song, 'next');
+        playFromQueue(state.currentQueueIndex + 1);
+      }
+      // Switch to player tab so user can see it playing
+      switchTab('player');
+    });
+
+    // ⋯ Three-dot button: opens the full context menu
+    row.querySelector('.dots-btn').addEventListener('click', (e) => {
+      e.stopPropagation(); // prevent row click from firing
+      showQueuePopup(song, e.currentTarget);
+    });
+
+    return row;
+  }
+
+  function renderRecentlyPlayed() {
+    const container = document.getElementById('recent-list');
+
+    // Sort history by lastPlayed timestamp, most recent first
+    const recent = [...listenHistory]
+      .sort((a, b) => (b.lastPlayed || 0) - (a.lastPlayed || 0))
+      .slice(0, 5) // show up to 5 recent songs
+      .map(h => state.allSongs.find(s => s.name === h.title))
+      .filter(Boolean); // remove any history entries whose files aren't loaded
+
+    if (recent.length === 0) {
+      container.innerHTML = '<div class="lib-empty">Nothing played yet. Upload some songs!</div>';
+      return;
+    }
+
+    container.innerHTML = '';
+    recent.forEach(song => container.appendChild(createLibRow(song)));
+  }
+
+  function renderAllSongs() {
+    const container = document.getElementById('all-songs-list');
+    if (state.allSongs.length === 0) {
+      container.innerHTML = '<div class="lib-empty">No songs yet. Click "Upload Songs" to add music.</div>';
+      return;
+    }
+    container.innerHTML = '';
+    state.allSongs.forEach(song => container.appendChild(createLibRow(song)));
+  }
+
+  function renderMostPlayed() {
+    const container = document.getElementById('most-played-list');
+
+    // Sort by playCount descending, take top 5
+    const mostPlayed = [...listenHistory]
+      .sort((a, b) => b.playCount - a.playCount)
+      .slice(0, 5)
+      .map(h => state.allSongs.find(s => s.name === h.title))
+      .filter(Boolean);
+
+    if (mostPlayed.length === 0) {
+      container.innerHTML = '<div class="lib-empty">Play some songs to see your top tracks here.</div>';
+      return;
+    }
+
+    container.innerHTML = '';
+    mostPlayed.forEach(song => container.appendChild(createLibRow(song, true)));
+  }
+
+  /* ============================================================
+     SECTION 10 — FILE UPLOAD
+     When the user picks files, we add them to state.allSongs
+     and re-render the library.
+  ============================================================ */
+
+  // Connect the library upload button to the hidden file input
+  uploadBtnLib.addEventListener('click', () => fileInput.click());
+
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files.length === 0) return;
+
+    const newFiles = Array.from(fileInput.files);
+    let addedCount = 0;
+
+    newFiles.forEach(file => {
+      const name = file.name.replace(/\.[^/.]+$/, ''); // strip extension
+      // Avoid adding duplicates (same name)
+      if (!state.allSongs.find(s => s.name === name)) {
+        state.allSongs.push({ name, file });
+        addedCount++;
+      }
+    });
+
+    showToast(`Added ${addedCount} song${addedCount !== 1 ? 's' : ''} to Library ♫`);
+    renderLibrary();
+
+    // Reset the input so the same file can be re-selected if needed
+    fileInput.value = '';
+  });
+
+  /* ============================================================
+     SECTION 11 — AUDIO EVENTS (progress, song end)
+  ============================================================ */
+
+  // Update progress bar and time display as song plays
+  audio.addEventListener('timeupdate', () => {
+    if (!audio.duration || state.mode !== 'local') return;
+    const pct = (audio.currentTime / audio.duration) * 100;
+    progressFill.style.width = pct + '%';
+    progressTrack.setAttribute('aria-valuenow', Math.round(pct));
+    timeCurrent.textContent = formatTime(audio.currentTime);
+    timeTotal.textContent   = formatTime(audio.duration);
+  });
+
+  // Handle song ending — advance queue or show nudge
+  audio.addEventListener('ended', () => {
+    if (state.isRepeat) {
+      audio.currentTime = 0; audio.play();
+    } else if (state.currentQueueIndex < state.queue.length - 1) {
+      // Auto-advance to next song in queue (Spotify/Apple behavior)
+      playFromQueue(state.currentQueueIndex + 1);
+    } else {
+      state.isPlaying = false;
+      updatePlayBtn(false);
+      showNudge();
+    }
+  });
+
+  /* ============================================================
+     SECTION 12 — PROGRESS BAR SCRUBBING
+  ============================================================ */
+  progressTrack.addEventListener('click', (e) => {
+    const rect  = progressTrack.getBoundingClientRect();
+    const ratio = (e.clientX - rect.left) / rect.width;
+    if (state.mode === 'local' && audio.duration) {
+      audio.currentTime = ratio * audio.duration;
+    } else if (state.mode === 'youtube' && ytPlayer?.getDuration) {
+      ytPlayer.seekTo(ratio * ytPlayer.getDuration(), true);
+    }
+  });
+
+  /* ============================================================
+     SECTION 13 — VOLUME CONTROL
+  ============================================================ */
+  volumeSlider.addEventListener('input', () => {
+    const val = parseInt(volumeSlider.value);
+    audio.volume = val / 100;
+    if (ytPlayer?.setVolume) ytPlayer.setVolume(val);
+    updateVolumeIcon(val);
+    saveVolume(val);
+  });
+  updateVolumeIcon(parseInt(volumeSlider.value));
+
+  /* ============================================================
+     SECTION 14 — PLAYBACK CONTROLS
+  ============================================================ */
+
+  // Play / Pause
+  btnPlay.addEventListener('click', () => {
+    if (state.mode === 'local') {
+      if (state.queue.length === 0) { showToast('Add songs in Library first ♫'); return; }
+      if (state.currentQueueIndex === -1) { playFromQueue(0); return; }
+      if (audio.paused) { audio.play(); state.isPlaying = true; }
+      else              { audio.pause(); state.isPlaying = false; }
+      updatePlayBtn(state.isPlaying);
+    } else {
+      if (!ytPlayer?.getPlayerState) { showToast('Load a YouTube URL first ▶'); return; }
+      const s = ytPlayer.getPlayerState();
+      if (s === 1) { ytPlayer.pauseVideo(); state.isPlaying = false; }
+      else         { ytPlayer.playVideo();  state.isPlaying = true;  }
+      updatePlayBtn(state.isPlaying);
+    }
+  });
+
+  // Previous: restart if > 3s in, else go to previous queue item
+  btnPrev.addEventListener('click', () => {
+    if (state.mode !== 'local' || state.queue.length === 0) return;
+    if (audio.currentTime > 3) { audio.currentTime = 0; }
+    else if (state.currentQueueIndex > 0) { playFromQueue(state.currentQueueIndex - 1); }
+  });
+
+  // Next: advance queue (respects shuffle)
+  btnNext.addEventListener('click', () => {
+    if (state.mode !== 'local' || state.queue.length === 0) return;
+    if (state.isShuffle && state.queue.length > 1) {
+      let next;
+      do { next = Math.floor(Math.random() * state.queue.length); }
+      while (next === state.currentQueueIndex);
+      playFromQueue(next);
+    } else if (state.currentQueueIndex < state.queue.length - 1) {
+      playFromQueue(state.currentQueueIndex + 1);
+    } else {
+      showToast('End of queue 🎵');
+    }
+  });
+
+  // Shuffle toggle
+  btnShuffle.addEventListener('click', () => {
+    state.isShuffle = !state.isShuffle;
+    btnShuffle.classList.toggle('toggled', state.isShuffle);
+    showToast(state.isShuffle ? 'Shuffle on ⇄' : 'Shuffle off');
+  });
+
+  /* ============================================================
+     SECTION 15 — SOURCE MODE SWITCHING
+  ============================================================ */
+  function setMode(mode) {
+    state.mode = mode;
+    btnLocal.classList.toggle('active', mode === 'local');
+    btnYT.classList.toggle('active',    mode === 'youtube');
+    btnLocal.setAttribute('aria-pressed', mode === 'local');
+    btnYT.setAttribute('aria-pressed',    mode === 'youtube');
+    panelLocal.classList.toggle('active', mode === 'local');
+    panelYT.classList.toggle('active',    mode === 'youtube');
+    if (mode === 'youtube' && !audio.paused) { audio.pause(); state.isPlaying = false; updatePlayBtn(false); }
+    if (mode === 'local' && ytPlayer?.pauseVideo) { ytPlayer.pauseVideo(); state.isPlaying = false; updatePlayBtn(false); }
+  }
+  btnLocal.addEventListener('click', () => setMode('local'));
+  btnYT.addEventListener('click',    () => setMode('youtube'));
+
+  /* ============================================================
+     SECTION 16 — YOUTUBE IFRAME API
+  ============================================================ */
+  let ytPlayer = null;
+  let ytProgressInterval = null;
+
+  window.onYouTubeIframeAPIReady = function() {
+    ytPlayer = new YT.Player('yt-container', {
+      height: '1', width: '1', videoId: '',
+      playerVars: { autoplay: 0, controls: 0, disablekb: 1, fs: 0, modestbranding: 1 },
+      events: {
+        onStateChange: function(event) {
+          if (event.data === YT.PlayerState.PLAYING) {
+            state.isPlaying = true; updatePlayBtn(true); startYTProgress();
+          } else if (event.data === YT.PlayerState.PAUSED) {
+            state.isPlaying = false; updatePlayBtn(false); stopYTProgress();
+          } else if (event.data === YT.PlayerState.ENDED) {
+            state.isPlaying = false; updatePlayBtn(false); stopYTProgress();
+            progressFill.style.width = '100%';
+            if (state.isRepeat) { ytPlayer.seekTo(0); ytPlayer.playVideo(); }
+            else showNudge();
+          }
+        },
+        onError: () => showToast('Could not load YouTube video')
+      }
+    });
+  };
+
+  function startYTProgress() {
+    stopYTProgress();
+    ytProgressInterval = setInterval(() => {
+      if (!ytPlayer?.getCurrentTime) return;
+      const cur = ytPlayer.getCurrentTime();
+      const dur = ytPlayer.getDuration();
+      if (!dur) return;
+      progressFill.style.width = (cur / dur * 100) + '%';
+      timeCurrent.textContent = formatTime(cur);
+      timeTotal.textContent   = formatTime(dur);
+    }, 500);
+  }
+  function stopYTProgress() {
+    if (ytProgressInterval) { clearInterval(ytProgressInterval); ytProgressInterval = null; }
+  }
+
+  function extractYTVideoId(url) {
+    const match = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+    return match ? match[1] : null;
+  }
+
+  ytLoadBtn.addEventListener('click', () => {
+    const url = ytUrlInput.value.trim();
+    if (!url) { showToast('Paste a YouTube URL first'); return; }
+    const videoId = extractYTVideoId(url);
+    if (!videoId) { showToast('Could not find a video ID in that URL'); return; }
+    if (!ytPlayer?.loadVideoById) { showToast('YouTube player still loading, try again'); return; }
+    ytPlayer.loadVideoById({ videoId, startSeconds: 0 });
+    ytPlayer.pauseVideo();
+    updateSongInfo('YouTube Video', 'YouTube', url.substring(0, 40) + '...');
+    recordPlay('YouTube: ' + videoId);
+    progressFill.style.width = '0%';
+    showToast('Video loaded! Press play ▶');
+  });
+  ytUrlInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') ytLoadBtn.click(); });
+
+  /* ============================================================
+     SECTION 17 — SIMILAR SONG NUDGE
+  ============================================================ */
+  function showNudge() {
+    nudge.classList.add('show');
+    setTimeout(() => nudge.classList.remove('show'), 8000);
+  }
+  document.getElementById('nudge-skip').addEventListener('click', () => nudge.classList.remove('show'));
+  document.getElementById('nudge-play').addEventListener('click', () => {
+    nudge.classList.remove('show');
+    showToast('Queuing similar song... (AI coming soon!)');
+  });
+
+  /* ============================================================
+     SECTION 18 — STARTUP
+  ============================================================ */
+  (function init() {
+    updateVolumeIcon(parseInt(volumeSlider.value));
+    const lastSong = localStorage.getItem('pp_lastSong');
+    if (lastSong) songAlbumEl.textContent = `Last played: ${lastSong}`;
+    renderLibrary(); // render empty states
+  })();
+
+</script>
+</body>
+</html>
