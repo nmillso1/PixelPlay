@@ -5,6 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>PixelPlay</title>
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet"/>
+
+  <!--
+    CONFIG — loads your Hugging Face API token from a separate file.
+    config.js is listed in .gitignore so your token never gets
+    committed to GitHub. See the README for setup instructions.
+    If config.js doesn't exist, pixel art generation is disabled
+    gracefully — the rest of the app still works fine.
+  -->
+  <script src="config.js" onerror="console.log('PixelPlay: config.js not found — pixel art disabled. See README.')"></script>
   <style>
     /* ============================================================
        CSS VARIABLES — our named color palette + shared values
@@ -112,11 +121,83 @@
     .yt-load-btn { padding: 9px 14px; border-radius: 999px; border: none; cursor: pointer; background: var(--indigo); color: white; font-family: 'Nunito', sans-serif; font-size: 12px; font-weight: 700; transition: opacity 0.2s; white-space: nowrap; }
     .yt-load-btn:hover { opacity: 0.85; }
 
-    /* Pixel art display */
-    .pixel-art-display { width: 190px; height: 190px; border-radius: 16px; position: relative; overflow: hidden; box-shadow: 0 8px 32px rgba(45,43,85,0.18); image-rendering: pixelated; background: linear-gradient(135deg, #C4D4F2 0%, #F2C4CE 50%, #C4F2E3 100%); }
-    .pixel-art-display::after { content: ''; position: absolute; inset: 0; background-image: linear-gradient(rgba(45,43,85,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(45,43,85,0.04) 1px, transparent 1px); background-size: 11px 11px; }
-    .pixel-art-placeholder { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; font-family: 'Press Start 2P', monospace; font-size: 7px; color: var(--indigo); opacity: 0.6; text-align: center; line-height: 1.8; z-index: 1; padding: 16px; }
+    /* ============================================================
+       PIXEL ART DISPLAY — three states:
+       1. Default: gradient placeholder + music note
+       2. Loading: animated pixel spinner while API generates
+       3. Generated: the actual AI image fills the square
+    ============================================================ */
+    .pixel-art-display {
+      width: 190px; height: 190px; border-radius: 16px; position: relative;
+      overflow: hidden; box-shadow: 0 8px 32px rgba(45,43,85,0.18);
+      image-rendering: pixelated;
+      background: linear-gradient(135deg, #C4D4F2 0%, #F2C4CE 50%, #C4F2E3 100%);
+      transition: background 0.5s ease;
+    }
+
+    /* Pixel grid overlay — always visible on top of art/placeholder */
+    .pixel-art-display::after {
+      content: ''; position: absolute; inset: 0; z-index: 2; pointer-events: none;
+      background-image:
+        linear-gradient(rgba(45,43,85,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(45,43,85,0.04) 1px, transparent 1px);
+      background-size: 11px 11px;
+    }
+
+    /* The generated <img> tag — fills the display square */
+    .pixel-art-display img.generated-art {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;        /* cover the square without stretching */
+      image-rendering: pixelated; /* keep pixel art crisp */
+      z-index: 1;
+      opacity: 0;               /* starts invisible */
+      transition: opacity 0.6s ease; /* fades in when loaded */
+    }
+    .pixel-art-display img.generated-art.loaded { opacity: 1; }
+
+    /* Default placeholder — music note + text */
+    .pixel-art-placeholder {
+      position: absolute; inset: 0; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 8px;
+      font-family: 'Press Start 2P', monospace; font-size: 7px;
+      color: var(--indigo); opacity: 0.6; text-align: center;
+      line-height: 1.8; z-index: 1; padding: 16px;
+      transition: opacity 0.3s;
+    }
     .pixel-art-placeholder .note { font-size: 32px; font-family: sans-serif; }
+    .pixel-art-placeholder.hidden { opacity: 0; pointer-events: none; }
+
+    /* ============================================================
+       LOADING STATE — animated pixel spinner
+       Shows while the Hugging Face API is generating the image.
+       We use a CSS animation that cycles through 8 pixel "frames"
+       by rotating a chunky square — gives a retro loading feel.
+    ============================================================ */
+    .pixel-art-loading {
+      position: absolute; inset: 0; display: none;
+      flex-direction: column; align-items: center; justify-content: center;
+      gap: 12px; z-index: 3; background: rgba(255,255,255,0.15);
+      backdrop-filter: blur(2px);
+    }
+    .pixel-art-loading.visible { display: flex; }
+
+    /* The spinning pixel block */
+    .pixel-spinner {
+      width: 20px; height: 20px;
+      background: var(--indigo);
+      image-rendering: pixelated;
+      animation: pixelSpin 0.8s steps(8, end) infinite;
+    }
+    @keyframes pixelSpin {
+      from { transform: rotate(0deg); }
+      to   { transform: rotate(360deg); }
+    }
+
+    .pixel-loading-text {
+      font-family: 'Press Start 2P', monospace; font-size: 6px;
+      color: var(--indigo); opacity: 0.8; text-align: center; line-height: 2;
+    }
 
     /* Song info */
     .song-info { text-align: center; width: 100%; }
@@ -416,12 +497,34 @@
           </div>
         </div>
 
-        <!-- Pixel art display -->
-        <div class="pixel-art-display" role="img" aria-label="Now playing pixel art">
-          <div class="pixel-art-placeholder" aria-hidden="true">
+        <!--
+          PIXEL ART DISPLAY — three layered elements:
+          1. .pixel-art-placeholder — shown by default (music note)
+          2. .pixel-art-loading     — shown while API is generating
+          3. img.generated-art      — shown when image is ready
+          The ::after pseudo-element adds the pixel grid on top of all three.
+        -->
+        <div class="pixel-art-display" id="pixel-art-display" role="img" aria-label="Now playing pixel art">
+
+          <!-- Default state: music note placeholder -->
+          <div class="pixel-art-placeholder" id="art-placeholder" aria-hidden="true">
             <span class="note">♪</span>
             <span>pixel art<br/>loads here</span>
           </div>
+
+          <!-- Loading state: pixel spinner while API generates -->
+          <div class="pixel-art-loading" id="art-loading" aria-hidden="true">
+            <div class="pixel-spinner"></div>
+            <div class="pixel-loading-text">generating<br/>pixel art...</div>
+          </div>
+
+          <!--
+            Generated image: injected by JavaScript when API returns.
+            starts with opacity:0, fades to opacity:1 once loaded.
+            The 'loaded' class triggers the CSS fade-in transition.
+          -->
+          <img class="generated-art" id="generated-art" src="" alt="AI generated pixel art" aria-hidden="true"/>
+
         </div>
 
         <!-- Song info -->
@@ -926,6 +1029,9 @@
 
     updateSongInfo(song.name, 'Local File', `${index + 1} of ${state.queue.length}`);
     recordPlay(song.name);
+
+    // Trigger AI pixel art generation for this song
+    generatePixelArt(song.name);
 
     audio.play()
       .then(() => { state.isPlaying = true; updatePlayBtn(true); })
@@ -1460,6 +1566,9 @@
     recordPlay('YouTube: ' + videoId);
     progressFill.style.width = '0%';
     showToast('Video loaded! Press play ▶');
+
+    // Generate pixel art using the video ID as the prompt seed
+    generatePixelArt('youtube music video ' + videoId);
   });
   ytUrlInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') ytLoadBtn.click(); });
 
@@ -1477,7 +1586,227 @@
   });
 
   /* ============================================================
-     SECTION 18 — STARTUP
+     SECTION 18 — AI PIXEL ART GENERATION
+     Calls the Hugging Face Inference API to generate pixel art
+     whenever a new song starts playing.
+
+     The flow:
+     1. Song starts → generatePixelArt(songName) is called
+     2. We build a descriptive prompt based on the song name
+     3. We call the HF API with that prompt
+     4. API returns a binary image blob
+     5. We convert it to a URL and display it with a fade-in
+     6. If anything fails, we gracefully fall back to the placeholder
+
+     The API token is loaded from config.js (never hardcoded here).
+     config.js is in .gitignore so it never gets committed to GitHub.
+  ============================================================ */
+
+  /*
+    DOM references for the three art display states.
+    We grab these here so we don't search the DOM on every song change.
+  */
+  const artPlaceholder  = document.getElementById('art-placeholder');
+  const artLoading      = document.getElementById('art-loading');
+  const generatedArtImg = document.getElementById('generated-art');
+  const pixelArtDisplay = document.getElementById('pixel-art-display');
+
+  /*
+    setArtState() controls which of the three visual states is shown.
+    mode: 'placeholder' | 'loading' | 'generated'
+
+    This centralizes all the show/hide logic in one place so we never
+    accidentally show two states at once.
+  */
+  function setArtState(mode) {
+    // Reset everything
+    artPlaceholder.classList.remove('hidden');
+    artLoading.classList.remove('visible');
+    generatedArtImg.classList.remove('loaded');
+
+    if (mode === 'loading') {
+      artPlaceholder.classList.add('hidden');  // hide placeholder
+      artLoading.classList.add('visible');      // show spinner
+    } else if (mode === 'generated') {
+      artPlaceholder.classList.add('hidden');  // hide placeholder
+      artLoading.classList.remove('visible');  // hide spinner
+      generatedArtImg.classList.add('loaded'); // fade in the image
+    }
+    // 'placeholder' = default, no changes needed (already reset above)
+  }
+
+  /*
+    buildArtPrompt() converts a song/file name into a rich image generation prompt.
+
+    Good image generation prompts are specific and descriptive.
+    Since we only have the song name (not real artist metadata yet),
+    we build a prompt that describes the STYLE we want rather than
+    the specific artist — this gives consistent, beautiful results.
+
+    Example: "lofi beats" →
+    "pixel art portrait, lofi beats, 32-bit retro game style,
+     pastel color palette, soft dreamy aesthetic, detailed sprite art,
+     indie game character, no text, square composition"
+  */
+  function buildArtPrompt(songName) {
+    // Clean up the song name: remove file extensions, underscores, hyphens
+    const cleanName = songName
+      .replace(/\.[^/.]+$/, '')      // remove extension if present
+      .replace(/[_-]/g, ' ')         // replace underscores/hyphens with spaces
+      .replace(/\s+/g, ' ')          // collapse multiple spaces
+      .trim();
+
+    /*
+      The prompt is structured in layers:
+      - Style descriptor (pixel art, 32-bit) — tells the model the art style
+      - Subject (the song name) — gives thematic context
+      - Aesthetic modifiers — pastel, dreamy, matches PixelPlay's vibe
+      - Technical constraints — no text, square, detailed
+      - Negative guidance in the prompt itself — "no text" prevents watermarks
+    */
+    return `pixel art portrait, ${cleanName}, 32-bit retro RPG game sprite style, ` +
+           `pastel color palette, soft dreamy aesthetic, detailed character art, ` +
+           `indie game illustration, vibrant but soft colors, pixelated, ` +
+           `square composition, no text, no watermark, clean background`;
+  }
+
+  /*
+    generatePixelArt() is the main function that calls the Hugging Face API.
+
+    It's an async function — meaning it can "pause and wait" for the API
+    to respond without freezing the rest of the app. The 'await' keyword
+    is what does the pausing.
+
+    async/await is JavaScript's way of handling things that take time
+    (like network requests) without blocking everything else.
+  */
+  async function generatePixelArt(songName) {
+    /*
+      Check if the API token is available.
+      PIXELPLAY_CONFIG is loaded from config.js (a separate file).
+      If config.js doesn't exist yet, we fall back gracefully.
+    */
+    const token = (typeof PIXELPLAY_CONFIG !== 'undefined' && PIXELPLAY_CONFIG.HF_TOKEN)
+      ? PIXELPLAY_CONFIG.HF_TOKEN
+      : null;
+
+    if (!token || token === 'YOUR_HF_TOKEN_HERE') {
+      // No token configured — stay on placeholder, log helpful message
+      console.log('PixelPlay: Add your Hugging Face token to config.js to enable pixel art generation.');
+      setArtState('placeholder');
+      return;
+    }
+
+    // Show the loading spinner while we wait for the API
+    setArtState('loading');
+
+    const prompt = buildArtPrompt(songName);
+
+    try {
+      /*
+        The Hugging Face Inference API endpoint format:
+        https://api-inference.huggingface.co/models/{model-name}
+
+        We're using 'nerijs/pixel-art-xl' — a fine-tuned Stable Diffusion
+        model specifically trained on pixel art. It produces 32-bit style
+        sprites that match PixelPlay's retro aesthetic perfectly.
+
+        fetch() makes an HTTP request. We use POST because we're sending data.
+        The body is JSON containing our prompt and generation settings.
+      */
+      const response = await fetch(
+        'https://api-inference.huggingface.co/models/nerijs/pixel-art-xl',
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            inputs: prompt,
+            parameters: {
+              num_inference_steps: 20,  // fewer steps = faster, 20 is a good balance
+              guidance_scale: 7.5,      // how closely to follow the prompt (7-8 is standard)
+              width: 512,               // output image width in pixels
+              height: 512,             // output image height in pixels
+            },
+            options: {
+              wait_for_model: true,     // wait if model is loading (free tier cold start)
+            }
+          })
+        }
+      );
+
+      /*
+        Check if the API returned an error.
+        HTTP status 200 = success. Anything else = something went wrong.
+        response.ok is true when status is 200-299.
+      */
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.warn('PixelPlay: Image generation failed:', errorText);
+
+        // If model is still loading (503), show a friendly message
+        if (response.status === 503) {
+          showToast('Pixel art model warming up... try again in 20s ☕');
+        } else {
+          showToast('Pixel art generation failed — using placeholder');
+        }
+        setArtState('placeholder');
+        return;
+      }
+
+      /*
+        The API returns a binary image blob (raw image data).
+        A Blob is a JavaScript object that holds binary data — think of it
+        as a container for the raw bytes of an image file.
+
+        URL.createObjectURL() creates a temporary browser URL pointing
+        to that blob, so we can use it as an <img> src.
+      */
+      const imageBlob = await response.blob();
+      const imageUrl  = URL.createObjectURL(imageBlob);
+
+      /*
+        Revoke the previous generated image URL to free memory.
+        (Same pattern we use for local audio files)
+      */
+      if (generatedArtImg.src && generatedArtImg.src.startsWith('blob:')) {
+        URL.revokeObjectURL(generatedArtImg.src);
+      }
+
+      // Set the image source — this triggers the browser to load/display it
+      generatedArtImg.src = imageUrl;
+
+      /*
+        Wait for the image to fully load before fading it in.
+        The 'load' event fires when the browser has finished
+        decoding and rendering the image.
+      */
+      generatedArtImg.onload = () => {
+        setArtState('generated');
+        showToast('✨ Pixel art generated!');
+      };
+
+      generatedArtImg.onerror = () => {
+        console.warn('PixelPlay: Image failed to display');
+        setArtState('placeholder');
+      };
+
+    } catch (error) {
+      /*
+        catch() handles any unexpected errors — network failures,
+        JSON parse errors, etc. We always fall back gracefully
+        rather than breaking the app.
+      */
+      console.error('PixelPlay: Pixel art generation error:', error);
+      showToast('Could not generate pixel art — check your connection');
+      setArtState('placeholder');
+    }
+  }
+
+  /* ============================================================
+     SECTION 19 — STARTUP
   ============================================================ */
   (function init() {
     updateVolumeIcon(parseInt(volumeSlider.value));
