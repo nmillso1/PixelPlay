@@ -415,80 +415,8 @@
     .nudge-btn:hover { opacity: 0.85; transform: scale(1.03); }
 
     /* ============================================================
-       MINI PLAYER BAR
-       Persistent bottom bar visible on all tabs when a song is playing.
-       Fixed to the bottom of the screen, slides up when active.
-       Contains: art thumbnail, song info, play/pause, prev, next.
+       TOAST — brief feedback message
     ============================================================ */
-    .mini-player {
-      position: fixed; bottom: 0; left: 0; right: 0; z-index: 90;
-      height: 68px;
-      background: rgba(255,255,255,0.75); backdrop-filter: blur(24px);
-      border-top: 1px solid rgba(255,255,255,0.8);
-      box-shadow: 0 -4px 24px rgba(45,43,85,0.10);
-      display: flex; align-items: center; gap: 14px; padding: 0 24px;
-      transform: translateY(100%); /* hidden below screen by default */
-      transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-    /* Slides up when a song is playing */
-    .mini-player.visible { transform: translateY(0); }
-
-    /* Small pixel art thumbnail in mini player */
-    .mini-thumb {
-      width: 44px; height: 44px; border-radius: 8px; flex-shrink: 0;
-      image-rendering: pixelated;
-      background: linear-gradient(135deg, var(--pink), var(--blue));
-      overflow: hidden; position: relative;
-    }
-    .mini-thumb img {
-      width: 100%; height: 100%; object-fit: cover;
-      image-rendering: pixelated; opacity: 0; transition: opacity 0.3s;
-    }
-    .mini-thumb img.loaded { opacity: 1; }
-
-    /* Song info in mini player */
-    .mini-info { flex: 1; min-width: 0; }
-    .mini-title  { font-size: 13px; font-weight: 700; color: var(--indigo); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .mini-artist { font-size: 11px; color: var(--indigo2); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-    /* Mini progress bar — thin line at top of mini player */
-    .mini-progress {
-      position: absolute; top: 0; left: 0; right: 0; height: 2px;
-      background: rgba(45,43,85,0.08);
-    }
-    .mini-progress-fill { height: 100%; background: var(--indigo); width: 0%; transition: width 0.1s linear; }
-
-    /* Mini controls */
-    .mini-controls { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-    .mini-btn {
-      border: none; background: none; cursor: pointer; color: var(--indigo);
-      width: 36px; height: 36px; border-radius: 50%; display: flex;
-      align-items: center; justify-content: center; font-size: 16px;
-      opacity: 0.7; transition: all 0.15s;
-    }
-    .mini-btn:hover { opacity: 1; background: rgba(45,43,85,0.08); transform: scale(1.1); }
-    .mini-btn.play-mini {
-      background: var(--indigo); color: white; opacity: 1; font-size: 14px;
-      box-shadow: 0 2px 8px rgba(45,43,85,0.2);
-    }
-    .mini-btn.play-mini:hover { background: var(--indigo2); transform: scale(1.08); }
-
-    /* Push page content up when mini player is visible so nothing is hidden behind it */
-    .app.has-mini-player .main { padding-bottom: 68px; }
-
-    /* Now-playing dots button in player card */
-    .now-playing-dots {
-      position: absolute; top: 12px; right: 12px;
-      background: none; border: none; cursor: pointer;
-      font-size: 18px; color: var(--indigo2); opacity: 0.5;
-      width: 32px; height: 32px; border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      transition: all 0.15s;
-    }
-    .now-playing-dots:hover { opacity: 1; background: rgba(45,43,85,0.08); }
-
-    /* Make player card position:relative so dots button can be absolute */
-    .player-card { position: relative; }
     .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--indigo); color: white; padding: 9px 20px; border-radius: 999px; font-size: 12px; font-weight: 700; opacity: 0; transition: all 0.3s; z-index: 300; white-space: nowrap; }
     .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
@@ -548,9 +476,6 @@
     ============================================================ -->
     <main class="center-stage" id="view-player" aria-label="Now playing">
       <div class="player-card">
-
-        <!-- Three-dot menu button for the currently playing song -->
-        <button class="now-playing-dots" id="now-playing-dots" aria-label="Song options">⋯</button>
 
         <!-- Source toggle -->
         <div class="source-toggle" role="group" aria-label="Music source">
@@ -776,38 +701,6 @@
 <!-- TOAST -->
 <div class="toast" id="toast" aria-live="polite"></div>
 
-<!--
-  MINI PLAYER BAR
-  Persistent now-playing bar at the bottom of every tab.
-  Slides up when a song starts, slides down when nothing is playing.
-  Contains a thin progress bar at the top edge, art thumbnail,
-  song info, and prev/play/next controls.
--->
-<div class="mini-player" id="mini-player" aria-label="Now playing">
-  <!-- Thin progress bar at the very top of the mini player -->
-  <div class="mini-progress" aria-hidden="true">
-    <div class="mini-progress-fill" id="mini-progress-fill"></div>
-  </div>
-
-  <!-- Pixel art thumbnail — mirrors the main player art -->
-  <div class="mini-thumb" id="mini-thumb" aria-hidden="true">
-    <img id="mini-art-img" src="" alt=""/>
-  </div>
-
-  <!-- Song title and artist -->
-  <div class="mini-info">
-    <div class="mini-title"  id="mini-title">—</div>
-    <div class="mini-artist" id="mini-artist">—</div>
-  </div>
-
-  <!-- Playback controls: prev, play/pause, next -->
-  <div class="mini-controls" aria-label="Mini player controls">
-    <button class="mini-btn" id="mini-prev" aria-label="Previous song">⏮</button>
-    <button class="mini-btn play-mini" id="mini-play" aria-label="Play">▶</button>
-    <button class="mini-btn" id="mini-next" aria-label="Next song">⏭</button>
-  </div>
-</div>
-
 <!-- YouTube API -->
 <script src="https://www.youtube.com/iframe_api"></script>
 <div id="yt-container"></div>
@@ -847,18 +740,7 @@
   const toastEl        = document.getElementById('toast');
   const uploadBtnLib   = document.getElementById('upload-btn-lib');
   const queuePopup     = document.getElementById('queue-popup');
-  const nowPlayingDots = document.getElementById('now-playing-dots');
-
-  // Mini player elements
-  const miniPlayer       = document.getElementById('mini-player');
-  const miniProgressFill = document.getElementById('mini-progress-fill');
-  const miniThumb        = document.getElementById('mini-thumb');
-  const miniArtImg       = document.getElementById('mini-art-img');
-  const miniTitle        = document.getElementById('mini-title');
-  const miniArtist       = document.getElementById('mini-artist');
-  const miniPlayBtn      = document.getElementById('mini-play');
-  const miniPrevBtn      = document.getElementById('mini-prev');
-  const miniNextBtn      = document.getElementById('mini-next');
+  // popup buttons are now wired directly in Section 8 via getElementById
 
   /* ============================================================
      SECTION 2 — APP STATE
@@ -1015,25 +897,12 @@
     // Show the matching view, hide the others
     Object.entries(views).forEach(([name, el]) => {
       if (name === 'player') {
+        // Player uses display:flex, others use display:block via .active class
         el.style.display = name === tabName ? 'flex' : 'none';
       } else {
         el.classList.toggle('active', name === tabName);
       }
     });
-
-    /*
-      Hide the mini player on the Player tab (full player is visible).
-      Show it on Library and Discover tabs only when something is playing.
-    */
-    if (tabName === 'player') {
-      miniPlayer.style.display = 'none';
-    } else {
-      miniPlayer.style.display = '';
-      // Only show if something is actually loaded
-      if (state.currentQueueIndex >= 0 || state.mode === 'youtube') {
-        miniPlayer.classList.add('visible');
-      }
-    }
   }
 
   tabButtons.forEach(btn => {
@@ -1145,10 +1014,9 @@
 
   /*
     Loads and plays a song at a specific queue index.
-    Now async — reads ID3 tags for real artist/album/year metadata.
-    Updates both the main player card and the persistent mini player bar.
+    This is the core playback function for local files.
   */
-  async function playFromQueue(index) {
+  function playFromQueue(index) {
     const song = state.queue[index];
     if (!song) return;
 
@@ -1160,48 +1028,18 @@
     // Create a temporary URL for the local File object
     audio.src = URL.createObjectURL(song.file);
 
-    // Show filename immediately while tags load
-    updateSongInfo(song.name, 'Loading...', `${index + 1} of ${state.queue.length}`);
-    updateMiniPlayer(song.name, 'Loading...', true);
+    updateSongInfo(song.name, 'Local File', `${index + 1} of ${state.queue.length}`);
+    recordPlay(song.name);
 
-    // Read ID3 tags from the file for real metadata
-    const tags = await readID3Tags(song.file);
-
-    /*
-      Use ID3 tags if available, fall back gracefully.
-      Tags give us "Kehlani" and "It Was Good Until It Wasn't"
-      instead of just "Local File".
-    */
-    const displayTitle  = tags.title  || song.name;
-    const displayArtist = tags.artist || 'Unknown Artist';
-    const displayAlbum  = tags.album
-      ? (tags.year ? `${tags.album} · ${tags.year}` : tags.album)
-      : `Track ${index + 1} of ${state.queue.length}`;
-
-    updateSongInfo(displayTitle, displayArtist, displayAlbum);
-    updateMiniPlayer(displayTitle, displayArtist, true);
-
-    // Store metadata on the song object for the three-dot menu
-    song.metadata = { title: displayTitle, artist: displayArtist, album: displayAlbum };
-
-    recordPlay(displayTitle);
-
-    // Build a better art prompt using real artist name if available
-    const artPromptSubject = tags.artist
-      ? `${tags.artist} ${tags.title || song.name} music`
-      : song.name;
-    generatePixelArt(artPromptSubject);
+    // Trigger AI pixel art generation for this song
+    generatePixelArt(song.name);
 
     audio.play()
-      .then(() => {
-        state.isPlaying = true;
-        updatePlayBtn(true);
-        miniPlayBtn.textContent = '⏸';
-      })
+      .then(() => { state.isPlaying = true; updatePlayBtn(true); })
       .catch(() => showToast('Could not play this file'));
 
     renderQueue();
-    renderLibrary();
+    renderLibrary(); // update is-playing highlight
   }
 
   // Open/close queue panel
@@ -1682,14 +1520,10 @@
         onStateChange: function(event) {
           if (event.data === YT.PlayerState.PLAYING) {
             state.isPlaying = true; updatePlayBtn(true); startYTProgress();
-            miniPlayBtn.textContent = '⏸';
-            miniPlayer.classList.add('visible');
           } else if (event.data === YT.PlayerState.PAUSED) {
             state.isPlaying = false; updatePlayBtn(false); stopYTProgress();
-            miniPlayBtn.textContent = '▶';
           } else if (event.data === YT.PlayerState.ENDED) {
             state.isPlaying = false; updatePlayBtn(false); stopYTProgress();
-            miniPlayBtn.textContent = '▶';
             progressFill.style.width = '100%';
             if (state.isRepeat) { ytPlayer.seekTo(0); ytPlayer.playVideo(); }
             else showNudge();
@@ -1707,9 +1541,7 @@
       const cur = ytPlayer.getCurrentTime();
       const dur = ytPlayer.getDuration();
       if (!dur) return;
-      const pct = (cur / dur * 100) + '%';
-      progressFill.style.width = pct;
-      miniProgressFill.style.width = pct;
+      progressFill.style.width = (cur / dur * 100) + '%';
       timeCurrent.textContent = formatTime(cur);
       timeTotal.textContent   = formatTime(dur);
     }, 500);
@@ -1723,35 +1555,21 @@
     return match ? match[1] : null;
   }
 
-  ytLoadBtn.addEventListener('click', async () => {
+  ytLoadBtn.addEventListener('click', () => {
     const url = ytUrlInput.value.trim();
     if (!url) { showToast('Paste a YouTube URL first'); return; }
     const videoId = extractYTVideoId(url);
     if (!videoId) { showToast('Could not find a video ID in that URL'); return; }
     if (!ytPlayer?.loadVideoById) { showToast('YouTube player still loading, try again'); return; }
-
     ytPlayer.loadVideoById({ videoId, startSeconds: 0 });
     ytPlayer.pauseVideo();
-
-    // Show placeholder while we fetch real metadata
-    updateSongInfo('Loading...', 'YouTube', '');
-    updateMiniPlayer('Loading...', 'YouTube', false);
+    updateSongInfo('YouTube Video', 'YouTube', url.substring(0, 40) + '...');
+    recordPlay('YouTube: ' + videoId);
+    progressFill.style.width = '0%';
     showToast('Video loaded! Press play ▶');
 
-    // Fetch real title and channel name via oEmbed (free, no API key)
-    const meta = await fetchYouTubeMetadata(videoId);
-    const displayTitle  = meta?.title      || 'YouTube Video';
-    const displayArtist = meta?.authorName || 'YouTube';
-    const displayAlbum  = `youtube.com/watch?v=${videoId}`;
-
-    updateSongInfo(displayTitle, displayArtist, displayAlbum);
-    updateMiniPlayer(displayTitle, displayArtist, false);
-
-    recordPlay(displayTitle);
-    progressFill.style.width = '0%';
-
-    // Generate pixel art using the real video title
-    generatePixelArt(`${displayArtist} ${displayTitle} music`);
+    // Generate pixel art using the video ID as the prompt seed
+    generatePixelArt('youtube music video ' + videoId);
   });
   ytUrlInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') ytLoadBtn.click(); });
 
@@ -1832,387 +1650,39 @@
      indie game character, no text, square composition"
   */
   function buildArtPrompt(songName) {
-    // Clean up the song name: remove file extensions, underscores, hyphens
     const cleanName = songName
-      .replace(/\.[^/.]+$/, '')      // remove extension if present
-      .replace(/[_-]/g, ' ')         // replace underscores/hyphens with spaces
-      .replace(/\s+/g, ' ')          // collapse multiple spaces
+      .replace(/\.[^/.]+$/, '')
+      .replace(/[_-]/g, ' ')
+      .replace(/\s+/g, ' ')
       .trim();
-
-    /*
-      The prompt is structured in layers:
-      - Style descriptor (pixel art, 32-bit) — tells the model the art style
-      - Subject (the song name) — gives thematic context
-      - Aesthetic modifiers — pastel, dreamy, matches PixelPlay's vibe
-      - Technical constraints — no text, square, detailed
-      - Negative guidance in the prompt itself — "no text" prevents watermarks
-    */
-    return `pixel art portrait, ${cleanName}, 32-bit retro RPG game sprite style, ` +
-           `pastel color palette, soft dreamy aesthetic, detailed character art, ` +
-           `indie game illustration, vibrant but soft colors, pixelated, ` +
-           `square composition, no text, no watermark, clean background`;
+    return `pixel art portrait, ${cleanName}, 32-bit retro RPG game sprite style, pastel color palette, soft dreamy aesthetic, detailed character art, indie game illustration, vibrant but soft colors, pixelated, square composition, no text, no watermark, clean background`;
   }
 
-  /*
-    generatePixelArt() is the main function that calls the Hugging Face API.
-
-    It's an async function — meaning it can "pause and wait" for the API
-    to respond without freezing the rest of the app. The 'await' keyword
-    is what does the pausing.
-
-    async/await is JavaScript's way of handling things that take time
-    (like network requests) without blocking everything else.
-  */
   async function generatePixelArt(songName) {
-    /*
-      Check if the API token is available.
-      PIXELPLAY_CONFIG is loaded from config.js (a separate file).
-      If config.js doesn't exist yet, we fall back gracefully.
-    */
-    const token = (typeof PIXELPLAY_CONFIG !== 'undefined' && PIXELPLAY_CONFIG.HF_TOKEN)
-      ? PIXELPLAY_CONFIG.HF_TOKEN
-      : null;
-
-    if (!token || token === 'YOUR_HF_TOKEN_HERE') {
-      // No token configured — stay on placeholder, log helpful message
-      console.log('PixelPlay: Add your Hugging Face token to config.js to enable pixel art generation.');
-      setArtState('placeholder');
-      return;
-    }
-
-    // Show the loading spinner while we wait for the API
     setArtState('loading');
-
     const prompt = buildArtPrompt(songName);
-
+    const encodedPrompt = encodeURIComponent(prompt);
+    const seed = songName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=512&height=512&seed=${seed}&nologo=true&model=flux`;
     try {
-      /*
-        The Hugging Face Inference API endpoint format:
-        https://api-inference.huggingface.co/models/{model-name}
-
-        We're using 'nerijs/pixel-art-xl' — a fine-tuned Stable Diffusion
-        model specifically trained on pixel art. It produces 32-bit style
-        sprites that match PixelPlay's retro aesthetic perfectly.
-
-        fetch() makes an HTTP request. We use POST because we're sending data.
-        The body is JSON containing our prompt and generation settings.
-      */
-      const response = await fetch(
-        'https://api-inference.huggingface.co/models/nerijs/pixel-art-xl',
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            inputs: prompt,
-            parameters: {
-              num_inference_steps: 20,  // fewer steps = faster, 20 is a good balance
-              guidance_scale: 7.5,      // how closely to follow the prompt (7-8 is standard)
-              width: 512,               // output image width in pixels
-              height: 512,             // output image height in pixels
-            },
-            options: {
-              wait_for_model: true,     // wait if model is loading (free tier cold start)
-            }
-          })
-        }
-      );
-
-      /*
-        Check if the API returned an error.
-        HTTP status 200 = success. Anything else = something went wrong.
-        response.ok is true when status is 200-299.
-      */
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.warn('PixelPlay: Image generation failed:', errorText);
-
-        // If model is still loading (503), show a friendly message
-        if (response.status === 503) {
-          showToast('Pixel art model warming up... try again in 20s ☕');
-        } else {
-          showToast('Pixel art generation failed — using placeholder');
-        }
-        setArtState('placeholder');
-        return;
-      }
-
-      /*
-        The API returns a binary image blob (raw image data).
-        A Blob is a JavaScript object that holds binary data — think of it
-        as a container for the raw bytes of an image file.
-
-        URL.createObjectURL() creates a temporary browser URL pointing
-        to that blob, so we can use it as an <img> src.
-      */
-      const imageBlob = await response.blob();
-      const imageUrl  = URL.createObjectURL(imageBlob);
-
-      /*
-        Revoke the previous generated image URL to free memory.
-        (Same pattern we use for local audio files)
-      */
-      if (generatedArtImg.src && generatedArtImg.src.startsWith('blob:')) {
-        URL.revokeObjectURL(generatedArtImg.src);
-      }
-
-      // Set the image source — this triggers the browser to load/display it
-      generatedArtImg.src = imageUrl;
-
-      /*
-        Wait for the image to fully load before fading it in.
-        The 'load' event fires when the browser has finished
-        decoding and rendering the image.
-      */
-      generatedArtImg.onload = () => {
-        setArtState('generated');
-        showToast('✨ Pixel art generated!');
-        // Mirror the generated art into the mini player thumbnail
-        syncMiniArt(imageUrl);
+      const img = new Image();
+      img.onload = () => {
+        generatedArtImg.src = imageUrl;
+        generatedArtImg.onload = () => {
+          setArtState('generated');
+          showToast('✨ Pixel art generated!');
+          syncMiniArt(imageUrl);
+        };
       };
-
-      generatedArtImg.onerror = () => {
-        console.warn('PixelPlay: Image failed to display');
+      img.onerror = () => {
+        console.warn('PixelPlay: Pollinations image generation failed');
+        showToast('Could not generate pixel art');
         setArtState('placeholder');
       };
-
+      img.src = imageUrl;
     } catch (error) {
-      /*
-        catch() handles any unexpected errors — network failures,
-        JSON parse errors, etc. We always fall back gracefully
-        rather than breaking the app.
-      */
-      console.error('PixelPlay: Pixel art generation error:', error);
-      showToast('Could not generate pixel art — check your connection');
+      console.error('PixelPlay: Pixel art error:', error);
       setArtState('placeholder');
-    }
-  }
-
-  /* ============================================================
-     SECTION 19 — MINI PLAYER BAR
-     Persistent bottom bar visible on all tabs.
-     Mirrors the main player's state — same song, same play/pause.
-     Shows/hides based on whether anything is loaded.
-  ============================================================ */
-
-  /*
-    updateMiniPlayer() syncs the mini bar with the current playback state.
-    Called whenever a song loads, plays, pauses, or progresses.
-  */
-  function updateMiniPlayer(title, artist, playing) {
-    miniTitle.textContent  = title  || '—';
-    miniArtist.textContent = artist || '—';
-    miniPlayBtn.textContent = playing ? '⏸' : '▶';
-    miniPlayBtn.setAttribute('aria-label', playing ? 'Pause' : 'Play');
-
-    // Show the bar by sliding it up
-    miniPlayer.classList.add('visible');
-    document.querySelector('.app').classList.add('has-mini-player');
-  }
-
-  /*
-    syncMiniArt() copies the generated pixel art into the mini thumbnail.
-    Called after the main art image loads successfully.
-  */
-  function syncMiniArt(src) {
-    if (!src) return;
-    miniArtImg.src = src;
-    miniArtImg.onload = () => miniArtImg.classList.add('loaded');
-  }
-
-  // Mini player prev button — same logic as main prev
-  miniPrevBtn.addEventListener('click', () => {
-    if (state.mode !== 'local' || state.queue.length === 0) return;
-    if (audio.currentTime > 3) { audio.currentTime = 0; }
-    else if (state.currentQueueIndex > 0) { playFromQueue(state.currentQueueIndex - 1); }
-  });
-
-  // Mini player play/pause — routes to correct source
-  miniPlayBtn.addEventListener('click', () => {
-    if (state.mode === 'local') {
-      if (audio.paused) { audio.play(); state.isPlaying = true; }
-      else              { audio.pause(); state.isPlaying = false; }
-      updatePlayBtn(state.isPlaying);
-      miniPlayBtn.textContent = state.isPlaying ? '⏸' : '▶';
-    } else if (ytPlayer?.getPlayerState) {
-      const s = ytPlayer.getPlayerState();
-      if (s === 1) { ytPlayer.pauseVideo(); state.isPlaying = false; }
-      else         { ytPlayer.playVideo();  state.isPlaying = true; }
-      updatePlayBtn(state.isPlaying);
-      miniPlayBtn.textContent = state.isPlaying ? '⏸' : '▶';
-    }
-  });
-
-  // Mini player next button — same logic as main next
-  miniNextBtn.addEventListener('click', () => {
-    if (state.mode !== 'local' || state.queue.length === 0) return;
-    if (state.isShuffle && state.queue.length > 1) {
-      let next;
-      do { next = Math.floor(Math.random() * state.queue.length); }
-      while (next === state.currentQueueIndex);
-      playFromQueue(next);
-    } else if (state.currentQueueIndex < state.queue.length - 1) {
-      playFromQueue(state.currentQueueIndex + 1);
-    }
-  });
-
-  // Update mini progress bar in sync with main progress
-  audio.addEventListener('timeupdate', () => {
-    if (!audio.duration) return;
-    const pct = (audio.currentTime / audio.duration) * 100;
-    miniProgressFill.style.width = pct + '%';
-  });
-
-  /* ============================================================
-     SECTION 20 — NOW-PLAYING THREE-DOT MENU
-     The ⋯ button on the player card opens the same context menu
-     as library rows, but targets the currently playing song.
-  ============================================================ */
-  nowPlayingDots.addEventListener('click', (e) => {
-    e.stopPropagation();
-
-    // Build a song object from current playback state
-    const currentSong = state.queue[state.currentQueueIndex] || null;
-    if (!currentSong) {
-      showToast('No song is playing yet');
-      return;
-    }
-
-    showQueuePopup(currentSong, e.currentTarget);
-  });
-
-  /* ============================================================
-     SECTION 21 — ID3 METADATA READING
-     Reads the actual artist, album, and year embedded in MP3 files.
-     These are called "ID3 tags" — metadata stored inside the audio file.
-
-     We use a lightweight pure-JS ID3 reader that reads just the
-     first few kilobytes of the file (where tags are stored) without
-     loading the whole audio file into memory.
-
-     ID3v2 tag structure:
-     - Bytes 0-2: "ID3" header identifier
-     - Bytes 3-4: version
-     - Byte 5: flags
-     - Bytes 6-9: tag size
-     - Then: frames, each with a 4-char ID (TIT2=title, TPE1=artist, TALB=album, TDRC=year)
-  ============================================================ */
-
-  /*
-    readID3Tags() reads the ID3 metadata from a File object.
-    Returns a Promise that resolves to { title, artist, album, year }.
-    If reading fails or tags don't exist, returns empty strings.
-  */
-  function readID3Tags(file) {
-    return new Promise((resolve) => {
-      /*
-        We only need the first 128KB of the file — that's where ID3v2 tags live.
-        FileReader reads it as an ArrayBuffer (raw binary data).
-      */
-      const reader = new FileReader();
-
-      reader.onload = (e) => {
-        try {
-          const buffer = e.target.result;
-          const bytes  = new Uint8Array(buffer); // view the bytes as unsigned integers
-
-          // Check for ID3v2 header: first 3 bytes must be "ID3" (73, 68, 51 in ASCII)
-          if (bytes[0] !== 73 || bytes[1] !== 68 || bytes[2] !== 51) {
-            resolve({}); // no ID3 tags found
-            return;
-          }
-
-          /*
-            Calculate total tag size from bytes 6-9.
-            ID3v2 uses "synchsafe integers" — the high bit of each byte is always 0,
-            so each byte only contributes 7 bits to the total.
-          */
-          const tagSize = ((bytes[6] & 0x7F) << 21) |
-                          ((bytes[7] & 0x7F) << 14) |
-                          ((bytes[8] & 0x7F) << 7)  |
-                           (bytes[9] & 0x7F);
-
-          const result = {};
-          let offset = 10; // tags start after the 10-byte header
-
-          /*
-            Walk through each frame in the tag.
-            Each frame has:
-            - 4 bytes: frame ID (like "TIT2")
-            - 4 bytes: frame size (how many bytes of data follow)
-            - 2 bytes: flags
-            - N bytes: the actual text data
-          */
-          while (offset < tagSize + 10 && offset < buffer.byteLength - 10) {
-            // Read the 4-character frame ID
-            const frameId = String.fromCharCode(bytes[offset], bytes[offset+1], bytes[offset+2], bytes[offset+3]);
-
-            // If frame ID is all null bytes, we've reached padding — stop
-            if (frameId.charCodeAt(0) === 0) break;
-
-            // Read frame size (big-endian 32-bit integer)
-            const frameSize = (bytes[offset+4] << 24) | (bytes[offset+5] << 16) |
-                              (bytes[offset+6] << 8)  |  bytes[offset+7];
-
-            if (frameSize <= 0 || frameSize > tagSize) break; // safety check
-
-            // The text data starts after the 10-byte frame header + 1 encoding byte
-            const textStart   = offset + 11;
-            const textEnd     = offset + 10 + frameSize;
-            const textDecoder = new TextDecoder('utf-8', { ignoreBOM: true });
-            const text        = textDecoder.decode(bytes.slice(textStart, textEnd)).replace(/\0/g, '').trim();
-
-            // Map frame IDs to human-readable fields
-            if      (frameId === 'TIT2') result.title  = text; // song title
-            else if (frameId === 'TPE1') result.artist = text; // artist name
-            else if (frameId === 'TALB') result.album  = text; // album name
-            else if (frameId === 'TDRC' || frameId === 'TYER') result.year = text.substring(0, 4); // year
-
-            offset += 10 + frameSize; // advance to next frame
-          }
-
-          resolve(result);
-        } catch (err) {
-          console.warn('PixelPlay: ID3 read error:', err);
-          resolve({}); // fail gracefully — empty tags
-        }
-      };
-
-      reader.onerror = () => resolve({});
-
-      // Read only the first 128KB — more than enough for ID3 tags
-      reader.readAsArrayBuffer(file.slice(0, 131072));
-    });
-  }
-
-  /* ============================================================
-     SECTION 22 — YOUTUBE METADATA VIA OEMBED
-     Fetches the real video title and channel name from YouTube's
-     free oEmbed API — no API key required.
-
-     oEmbed is an open standard for embedding content. YouTube
-     supports it at: https://www.youtube.com/oembed?url=...&format=json
-
-     Returns: { title, authorName } or null if it fails.
-  ============================================================ */
-  async function fetchYouTubeMetadata(videoId) {
-    try {
-      const url      = `https://www.youtube.com/watch?v=${videoId}`;
-      const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`;
-
-      const response = await fetch(oembedUrl);
-      if (!response.ok) return null;
-
-      const data = await response.json();
-      return {
-        title:      data.title       || 'YouTube Video',
-        authorName: data.author_name || 'YouTube',
-      };
-    } catch (err) {
-      console.warn('PixelPlay: Could not fetch YouTube metadata:', err);
-      return null;
     }
   }
 
